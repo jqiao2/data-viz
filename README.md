@@ -1,0 +1,40 @@
+# data-viz
+
+Python data visualizations.
+
+## Sheep in Europe
+
+![Sheep per km²](output/sheep_density.png)
+![Sheep per 100 people](output/sheep_per_100_people.png)
+
+```
+python -m venv .venv
+.venv\Scripts\activate          # Windows; `source .venv/bin/activate` elsewhere
+pip install -r requirements.txt
+python sheep_maps.py            # downloads raw data to data/raw/ (gitignored), writes output/*.png
+```
+
+### Data sources
+
+Raw data is not committed. `sheep_maps.py` downloads it on first run (skipped if the file is already in `data/raw/`). Every file comes from public, keyless endpoints:
+
+| File | Source | What |
+|---|---|---|
+| `apro_mt_ls_r.tsv` | [Eurostat `apro_mt_ls_r`](https://ec.europa.eu/eurostat/databrowser/view/apro_mt_ls_r/default/table) | Animal populations by NUTS 2 region (December survey). Sheep = `animals=A4100`, `unit=THS_HD` (thousand heads). |
+| `ef_lsk_sheep.tsv` | [Eurostat `ef_lsk_sheep`](https://ec.europa.eu/eurostat/databrowser/view/ef_lsk_sheep/default/table) | Farm structure survey, sheep by NUTS 2 (2016/2020/2023). Downloaded with the SDMX key `A.TOTAL.TOTAL.TOTAL.TOTAL.A4100.HD.` (all farm sizes, heads) because the full table is about 120 MB. |
+| `apro_mt_lssheep.tsv` | [Eurostat `apro_mt_lssheep`](https://ec.europa.eu/eurostat/databrowser/view/apro_mt_lssheep/default/table) | National sheep population. Uses `month=M11_M12`, `animals=A4100`. |
+| `demo_r_d2jan.tsv` | [Eurostat `demo_r_d2jan`](https://ec.europa.eu/eurostat/databrowser/view/demo_r_d2jan/default/table) | Population on 1 January by NUTS 2 region (`sex=T`, `age=TOTAL`). |
+| `nuts_2024.geojson` | [GISCO NUTS 2024](https://ec.europa.eu/eurostat/web/gisco/geodata/statistical-units/territorial-units-statistics), 1:20M, EPSG:3035 | Region boundaries. |
+| `nuts_2016.geojson` | GISCO NUTS 2016, same format | Used only for UK boundaries, because the UK is not in NUTS after 2020. |
+
+Eurostat files come from the SDMX 2.1 API as TSV:
+`https://ec.europa.eu/eurostat/api/dissemination/sdmx/2.1/data/<dataset>?format=TSV&compressed=false`.
+
+### Method
+
+- **Sheep count per region:** the latest value from 2015 onward. Sources are tried in this order: `apro_mt_ls_r`, then `ef_lsk_sheep`, then the national total. Different regions can therefore come from different years and surveys.
+- **Population:** the latest value from 2015 onward. It is not matched to the year of the sheep count.
+- **Region detail:** each region is split into its sub-regions only when every sub-region has both sheep and population data. Otherwise the parent region is shown. As a result, most of Europe is at NUTS 2, but Scotland and London are at NUTS 1, and Ukraine, Bosnia, Kosovo and Liechtenstein are shown at country level.
+- **Area:** computed from the geometry in EPSG:3035, an equal-area projection.
+- **Map extent:** remote regions are dropped (Canary Islands, Azores, Madeira, French overseas regions). Turkey is included, following Eurostat's coverage.
+- **Colour scale:** logarithmic, because values range across about 3 orders of magnitude.
