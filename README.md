@@ -107,7 +107,16 @@ The resort list is `data/ikon_base_2026_27.csv`, one chart per 2026-27 Ikon Base
 - **Outlook:** for each resort, a least-squares line of % departure against peak ONI over every complete season,
   La Niña included, evaluated at the latest ONI reading. The chance of above-normal snowfall assumes winters
   scatter normally around that line. Results are in `output/ikon/forecast.csv`.
-- **Validation:** `data/validation/` holds resort-reported season totals (resort snowfall-history pages and
-  OnTheSnow, with the source URL on every row) and NOAA COOP station totals from the
-  [RCC-ACIS API](https://www.rcc-acis.org/docs_webservices.html). `ikon_validate.py` compares them with the model
-  season by season. California tracks well (r = 0.72–0.95); Taos and the Alps track poorly (r = 0.32–0.55).
+- **Validation:** `data/validation/` holds observed season snowfall, every row with its source URL:
+  - `<resort>.csv`: resort-reported totals from resort snowfall-history pages (Mammoth, Palisades, Big Bear,
+    Sierra-at-Tahoe) and OnTheSnow (2012-13 on).
+  - `station-<resort>--<station>.csv`: measured new snow. NOAA COOP stations are downloaded by `ikon_validate.py`
+    from [RCC-ACIS](https://www.rcc-acis.org/docs_webservices.html). The Alpine ones were built once from
+    MeteoSwiss open data (`hns000d0`), GeoSphere Austria (`klima-v2-1d`, `shneu_manu`), eHYD Tirol and
+    Météo-France daily climatology (`HNEIGEF`), with the same rule: season sums, dropped if more than 10 Nov-Apr
+    days are missing.
+
+  `ikon_validate.py` compares each record with the model season by season (`summary.csv`) and refits the El Niño
+  line on the best record of 30+ seasons per resort (`enso_check.csv`). The model tracks good and bad seasons at a
+  median r of about 0.65 and gets the Southern California and Pacific Northwest El Niño tilts right. The Alps
+  stations show no El Niño link, though the model gives them a snowy one.

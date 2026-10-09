@@ -11,6 +11,7 @@ import ikon_snow as k
 
 d = pd.read_csv(k.OUT / "forecast.csv")
 val = pd.read_csv("data/validation/summary.csv")
+real = pd.read_csv("data/validation/enso_check.csv").set_index("resort")  # best long measured record per resort
 ONI = k.latest_oni(k.oni())
 LO, HI = -60, 110  # departure axis for the row bars (%)
 W, H = 180, 18
@@ -38,6 +39,14 @@ def access(a):
     return '<span class="pill unl">Unlimited</span>' if a == "unlimited" else '<span class="pill lim">5 days</span>'
 
 
+def real_cell(name):
+    if name not in real.index:
+        return '<td class="num muted">–</td>'
+    v = real.loc[name]
+    return (f'<td class="num"><b>{v.p_above_obs * 100:.0f}%</b>'
+            f'<span class="sub">{html.escape(record(name, v.series))}, {v.n} yrs</span></td>')
+
+
 def table(g, south=False):
     rows = []
     for r in g.sort_values("p_above", ascending=False).itertuples():
@@ -47,10 +56,11 @@ def table(g, south=False):
             f'<tr><th scope="row"><a href="#{r.png[:-4]}">{html.escape(r.name)}</a>'
             f'<span class="sub">{html.escape(r.country)} · normal {r.normal_in:.0f}&Prime; ({r.normal_in * 2.54:.0f} cm)</span></th>'
             f'<td>{access(r.access)}</td>'
-            f'<td class="num"><b>{r.p_above * 100:.0f}%</b>{meter(r.p_above)}</td>'
+            f'<td class="num"><b>{r.p_above * 100:.0f}%</b>{meter(r.p_above)}</td>{real_cell(r.name)}'
             f'<td class="num">{r.pred:+.0f}%</td><td class="vis">{bar(r)}</td>'
             f'<td class="num muted">{r.r:+.2f}</td><td class="num muted">{rec}</td>{extra}</tr>')
     head = ('<tr><th scope="col">Resort</th><th scope="col">Base pass</th><th scope="col">Chance above normal</th>'
+            '<th scope="col" title="Same line fit on the best long measured snowfall record near the resort">Real record</th>'
             '<th scope="col">Predicted</th><th scope="col" class="vis">Range (±1 SD)</th>'
             '<th scope="col" title="Correlation of season snowfall with peak ONI, 1950–2025">r</th>'
             '<th scope="col" title="Strong or very strong El Niño seasons above normal">Strong El Niño record</th>'
@@ -67,30 +77,54 @@ def gallery(g):
     return f'<div class="gallery">{items}</div>'
 
 
-SOURCES = {('Palisades Tahoe', 'resort report'): 'Resort, 8,000 ft snow plot', ('Mammoth Mountain', 'resort report'): 'Resort, Main Lodge', ('Snow Valley', 'resort report'): 'OnTheSnow', ('Palisades Tahoe', 'NOAA station'): 'NOAA Tahoe City, 6,230 ft', ('Big Bear Mountain Resort', 'resort report'): 'Resort (Snow Summit / Bear Mtn)', ('Big Bear Mountain Resort', 'NOAA station'): 'NOAA Big Bear Lake, 6,750 ft', ('Megeve Ski Area', 'resort report'): 'OnTheSnow', ('Zermatt Matterhorn', 'resort report'): 'OnTheSnow', ('Chamonix Mont-Blanc Valley', 'resort report'): 'OnTheSnow', ('Taos Ski Valley', 'resort report'): 'OnTheSnow', ('Taos Ski Valley', 'NOAA station'): 'NOAA Eagle Nest, 8,280 ft, 20 km away'}
+AGENCY = {"Segl Maria": "MeteoSwiss", "Zermatt": "MeteoSwiss", "Galtur": "GeoSphere Austria", "Jochberg": "eHYD Tirol",
+          "Hahnenkamm Ehrenbachhohe": "GeoSphere Austria", "Chamonix": "Météo-France", "Megeve": "Météo-France",
+          "Hospitalet": "Météo-France", "Porte Puymorens": "Météo-France"}
+RESORT_PAGE = {"Mammoth Mountain", "Palisades Tahoe", "Big Bear Mountain Resort", "Sierra-at-Tahoe"}
+
+
+def record(resort, series):
+    """Human label for a validation series: 'NOAA Rainier Paradise', 'Resort report', 'OnTheSnow'."""
+    if series.startswith("station: "):
+        name = series.removeprefix("station: ")
+        return f"{AGENCY.get(name, 'NOAA')} {name}"
+    return "Resort report" if resort in RESORT_PAGE else "OnTheSnow"
 
 
 def validation():
+    e = real.reset_index().merge(d[["name", "region", "p_above"]], left_on="resort", right_on="name")
+    e = e.sort_values(["region", "p_above_obs"], ascending=[False, False])
+    enso_rows = "".join(
+        f'<tr><th scope="row">{html.escape(v.resort)}<span class="sub">{html.escape(record(v.resort, v.series))}</span></th>'
+        f'<td class="num">{v.n}</td><td class="num">{v.r:.2f}</td>'
+        f'<td class="num {"pos" if v.oni_r_obs >= 0 else "neg"}"><b>{v.oni_r_obs:+.2f}</b></td>'
+        f'<td class="num muted">{v.oni_r_model:+.2f}</td>'
+        f'<td class="num"><b>{v.p_above_obs * 100:.0f}%</b></td><td class="num muted">{v.p_above * 100:.0f}%</td></tr>'
+        for v in e.itertuples())
     rows = "".join(
-        f'<tr><th scope="row">{html.escape(v.resort)}<span class="sub">{html.escape(SOURCES.get((v.resort, v.series), v.series))}</span></th>'
+        f'<tr><th scope="row">{html.escape(v.resort)}<span class="sub">{html.escape(record(v.resort, v.series))}</span></th>'
         f'<td class="num">{v.n}</td><td class="num">{v.seasons.replace("..", " to ")}</td>'
         f'<td class="num"><b>{v.r:.2f}</b></td><td class="num">{v.same_side * 100:.0f}%</td>'
-        f'<td class="num muted">{v.ratio:.1f}×</td>'
-        f'<td class="num">{v.strong_obs_above}/{v.strong_n} · {v.strong_model_above}/{v.strong_n}</td>'
-        f'<td class="num muted">{v.oni_r_obs:+.2f} · {v.oni_r_model:+.2f}</td></tr>'
+        f'<td class="num muted">{v.ratio:.1f}×</td></tr>'
         for v in val.itertuples())
+    link = e.oni_r_obs.corr(e.oni_r_model)
     return f"""<section id="validation"><h2>Validation against real snowfall</h2>
-  <p>The model's totals were never meant to match resort reports, and they don't: Mammoth and Big Bear report about 2.5 times the modelled snowfall, while the Alps resorts report less. What matters is whether the model gets the good and bad seasons right. Each series below is compared season by season with the model, both measured from their own average over the seasons they share.</p>
+  <p>The outlook rests on modelled snowfall, so it was checked against {len(val)} observed records at {val.resort.nunique()} resorts: resort snowfall histories, OnTheSnow totals, and long new-snow records from NOAA, MeteoSwiss, GeoSphere Austria, the Tirol hydrographic service and Météo-France. Two questions matter. Does the model get the good and bad seasons right? And does the real snow show the same El Niño tilt?</p>
+  <h3>El Niño link in long measured records</h3>
+  <p class="note">The best record of 30 or more seasons at each resort, refitted exactly like the outlook. Departures are from each record's own average, so the odds mean above that record's average. Across these {len(e)} records the model's ENSO links line up with the real ones at r = {link:.2f}, with clear exceptions.</p>
+  <div class="tablewrap"><table><thead><tr><th scope="col">Resort and record</th><th scope="col">Seasons</th>
+    <th scope="col" title="Correlation of observed and modelled season totals">Tracks model</th>
+    <th scope="col" title="Correlation of observed season snowfall with peak ONI">ENSO link, real</th><th scope="col">ENSO link, model</th>
+    <th scope="col">Odds, real record</th><th scope="col">Odds, model</th></tr></thead><tbody>{enso_rows}</tbody></table></div>
+  <div class="cols">
+    <div><h3>Confirmed</h3><p class="note">Southern California leans snowy (Big Bear Lake, 41 seasons: +0.25, about 70%). The Pacific Northwest and northern Idaho lean dry, Paradise on Mount Rainier most of all: −0.40 over 47 seasons, the strongest real signal found, which puts Crystal near a one-in-five chance of an above-average winter.</p></div>
+    <div><h3>Not confirmed</h3><p class="note">The model tilts the western Alps snowy, but none of the seven long Alpine records agrees. Chamonix, Megève and Zermatt sit at −0.06 to +0.03 over 56–64 seasons, and Segl-Maria (St. Moritz) and Galtür (Ischgl) lean slightly dry. The Alps are a coin flip in El Niño winters. Northern Vermont and western Maine lean dry (Mount Mansfield, Rangeley), which the model only partly catches.</p></div>
+  </div>
+  <details><summary>All {len(val)} records: how closely the model tracks each season</summary>
   <div class="tablewrap"><table><thead><tr><th scope="col">Resort and record</th><th scope="col">Seasons</th><th scope="col">Span</th>
     <th scope="col" title="Correlation of observed and modelled season totals">r</th><th scope="col" title="Seasons where both are on the same side of their average">Same side</th>
-    <th scope="col" title="Observed average divided by modelled average">Obs ÷ model</th>
-    <th scope="col" title="Strong El Niño seasons above average: observed · model">Strong El Niño above, obs · model</th>
-    <th scope="col" title="Correlation with peak ONI: observed · model">ENSO link, obs · model</th></tr></thead><tbody>{rows}</tbody></table></div>
-  <div class="cols">
-    <div><h3>California holds up</h3><p class="note">Palisades, Mammoth, Snow Valley and Big Bear track at r = 0.72–0.95, so the El Niño tilt there comes from real weather. Two refinements: Big Bear's NOAA station shows a weaker ENSO link than the model (+0.25 vs +0.35), and Mammoth's own record beats average in more strong El Niño winters than the model does (6 of 7 vs 4 of 7).</p></div>
-    <div><h3>Taos and the Alps are uncertain</h3><p class="note">Taos tracks at only r = 0.32–0.33 against both its OnTheSnow totals and the nearest long NOAA record. The Alps series cover only 12–13 seasons of self-reported OnTheSnow totals with two strong El Niño winters, so they neither confirm nor rule out the European tilt.</p></div>
-  </div>
-  <p class="note">Sources: resort snowfall-history pages, OnTheSnow historical snowfall, and NOAA COOP stations via the RCC-ACIS API (seasons missing more than 10 winter days are dropped). Snow Valley uses OnTheSnow throughout; the resort's own page runs about 25% higher from 2022-23. Palisades 2025-26 is dropped because the table shows no March snowfall.</p>
+    <th scope="col" title="Observed average divided by modelled average">Obs ÷ model</th></tr></thead><tbody>{rows}</tbody></table></div></details>
+  <p class="note">Median season-to-season r is about 0.65 for both station and resort records, highest in California (0.82–0.99) and lowest at Taos, Grandvalira and Valle d'Aosta. Resort reports run up to 2.8 times the model; Alpine valley stations run below it. Stations sit up to 50 km from the resort and often well below the slopes. Seasons missing more than 10 winter days are dropped. No open new-snow data exists for Valle d'Aosta or the Dolomites. OnTheSnow series start in 2012-13, too short to test El Niño.</p>
 </section>"""
 
 
@@ -104,9 +138,14 @@ def pick(name):
 
 def card(name, note):
     r = pick(name)
-    return (f'<li><a href="#{r.png[:-4]}">{html.escape(name)}</a><span class="big">{r.p_above * 100:.0f}%</span>'
-            f'<span class="sub">predicted {r.pred:+.0f}% · {"unlimited" if r.access == "unlimited" else "5 days"} on Base</span>'
-            f'<p>{note}</p></li>')
+    base = "unlimited" if r.access == "unlimited" else "5 days"
+    if name in real.index:
+        v = real.loc[name]
+        odds, sub = v.p_above_obs, f"real record ({html.escape(record(name, v.series))}) · model {r.p_above * 100:.0f}% · {base}"
+    else:
+        odds, sub = r.p_above, f"model · predicted {r.pred:+.0f}% · {base} on Base"
+    return (f'<li><a href="#{r.png[:-4]}">{html.escape(name)}</a><span class="big">{odds * 100:.0f}%</span>'
+            f'<span class="sub">{sub}</span><p>{note}</p></li>')
 
 
 page = f"""<title>Ikon El Niño Outlook</title>
@@ -193,34 +232,36 @@ details img {{ display:block; padding:0 8px 8px; border-radius:6px; }}
 
 <section id="bottom-line" class="bottom">
   <h2>Bottom line</h2>
-  <p>A very strong El Niño shifts the winter storm track south. Over 76 winters of reanalysis data that has meant more snow for Southern California, northern New Mexico and the western Alps, and less for the Pacific Northwest, interior British Columbia, the Canadian Rockies, Montana and the Great Lakes. The effect is real but modest: even at the best-placed resort, El Niño explains about 15% of the winter-to-winter swing.</p>
-  <h3>Best odds in North America and Europe</h3>
+  <p>A very strong El Niño shifts the winter storm track south. In both the reanalysis and two dozen long measured snow records, that has meant more snow for Southern California and less for the Pacific Northwest, northern Idaho, interior British Columbia and the Canadian Rockies. The model also tilts the western Alps snowy, but 46 to 76 seasons of Swiss, French and Austrian station records show no such effect, so treat the Alps as a coin flip. Even where the link is strongest, El Niño explains under a fifth of the winter-to-winter swing.</p>
+  <h3>Best odds</h3>
   <ul class="picks">
-    {card("Big Bear Mountain Resort", "Strongest and most reliable El Niño link of all 77 resorts. Beat normal in 7 of the 9 strong El Niño winters, with a median of +54%. Real records suggest the model overstates the link a little; nearer 70% is a fair read.")}
-    {card("Snow Valley", "Same storms, same story as Big Bear, 15 km west. Unlimited on Base.")}
-    {card("Taos Ski Valley", "Smaller gain and the steadiest record, but the least certain pick: the model tracks Taos records poorly (see Validation).")}
-    {card("Chamonix Mont-Blanc Valley", "The western Alps lean snowy in El Niño winters. Valle d'Aosta, Megève and Zermatt show the same tilt.")}
+    {card("Big Bear Mountain Resort", "The most reliable El Niño link on the pass, confirmed by 41 seasons at Big Bear Lake. The model says 80%; the real record says about 70%. Unlimited on Base.")}
+    {card("Snow Valley", "Same storms as Big Bear, 15 km west, and its OnTheSnow totals track the model closely (r = 0.82). No long record to check the El Niño link, so expect it to run lower like Big Bear, nearer 70%.")}
+    {card("Mammoth Mountain", "The model is lukewarm, but Mammoth's own 57-year record beat its average in 6 of 7 strong El Niño winters. Strong events help here; weak ones do little. Unlimited on Base.")}
+    {card("Taos Ski Valley", "Leans snowy in both the model and the nearest long record, but the model tracks Taos snowfall poorly, so this is the least certain of the four.")}
   </ul>
+  <h3>Europe: no reliable tilt</h3>
+  <p class="note">Real-record odds of an above-average winter: Megève {real.loc["Megeve Ski Area"].p_above_obs * 100:.0f}%, Zermatt {real.loc["Zermatt Matterhorn"].p_above_obs * 100:.0f}%, Kitzbühel {real.loc["Kitzbuhel"].p_above_obs * 100:.0f}%, Chamonix {real.loc["Chamonix Mont-Blanc Valley"].p_above_obs * 100:.0f}%, Ischgl {real.loc["Ischgl"].p_above_obs * 100:.0f}%, St. Moritz {real.loc["St. Moritz"].p_above_obs * 100:.0f}%. None of these links is statistically meaningful, so pick an Alpine trip on other grounds. If anything, the eastern Alps (St. Moritz, Ischgl) lean slightly dry.</p>
   <h3>Weakest odds</h3>
   <ul class="picks bad">
-    {card("The Highlands", "Michigan and Minnesota resorts (The Highlands, Boyne, Lutsen) won only 2–4 of 9 strong El Niño winters.")}
-    {card("Schweitzer", "Northern Idaho and the Washington Cascades (Snoqualmie, Crystal) lose about 8–11% per degree of ONI.")}
-    {card("Sun Peaks Resort", "Interior BC and the SkiBig3 resorts lean dry. Lake Louise and Banff Sunshine beat normal in only 2 of 9.")}
-    {card("Grandvalira Resorts", "The only European resort below even odds. The Pyrenees sit south of the storm track the Alps benefit from.")}
+    {card("Crystal Mountain", "Paradise on Mount Rainier has the strongest real El Niño signal found (−0.40 over 47 seasons), stronger than the model. The model gives Snoqualmie and Mt. Bachelor the same dry tilt; their own records are too short to confirm it.")}
+    {card("Schweitzer", "Sandpoint's 58-season record agrees with the model: northern Idaho runs dry in El Niño winters.")}
+    {card("Sugarloaf", "Rangeley (51 seasons) and Mount Mansfield near Sugarbush (50 seasons) both lean dry, a northern New England tilt the model mostly misses.")}
+    {card("The Highlands", "Michigan and Minnesota resorts (The Highlands, Boyne, Lutsen) won only 2–4 of 9 strong El Niño winters in the model. No long station check yet.")}
   </ul>
   <div class="cols">
-    <div><h3>Tahoe and Mammoth</h3><p class="note">The straight-line fit puts them near even odds because weak and moderate El Niños do little there. In strong ones they do better: Palisades and Sierra-at-Tahoe beat normal in 7 of 9, Mammoth in 5 of 9 in the model. Mammoth's own 57-year record does better: above average in 6 of its 7 strong El Niño winters. Treat them as better bets than the table says.</p></div>
+    <div><h3>Tahoe and the Northeast</h3><p class="note">Palisades and Sierra-at-Tahoe beat normal in 7 of 9 strong El Niño winters in the model, but Tahoe City's 73-year record is close to neutral (54%): strong events help and weak ones don't. Stratton, Loon and Sunday River sit near even odds in both the model and the station records; Killington leans slightly dry (41% at Chittenden).</p></div>
     <div><h3>Southern Hemisphere, 2026 season</h3><p class="note">The El Niño season is already here and nearly over. Valle Nevado has the strongest link of any resort (r = +0.52) and is at {pick("Valle Nevado").to_date:+.0f}% so far. Thredbo ({pick("Thredbo").to_date:+.0f}%) and Mt Buller ({pick("Mt Buller").to_date:+.0f}%) are having the poor season Australian history predicts. The New Zealand resorts are running 26–30% below normal despite a slightly positive history.</p></div>
   </div>
 </section>
 
 <section id="how-to-read">
   <h3>How to read the tables</h3>
-  <p class="note"><b>Chance above normal</b> is the probability this winter beats the resort's 1991–2020 average, from a line fitted through every winter since 1950–51 against its peak ONI and evaluated at +{ONI:.2f}. <b>Predicted</b> is that line's departure; the range bar shows ±1 standard deviation of past winters around the line (about two winters in three fall inside it; axis −60% to +110%). <b>r</b> measures how tightly snowfall follows ENSO. <b>Strong El Niño record</b> counts strong and very strong winters (peak ONI ≥ 1.5) that beat normal. Select a resort name for its season-by-season chart.</p>
+  <p class="note"><b>Chance above normal</b> is the probability this winter beats the resort's 1991–2020 average, from a line fitted through every winter since 1950–51 against its peak ONI and evaluated at +{ONI:.2f}. <b>Predicted</b> is that line's departure; the range bar shows ±1 standard deviation of past winters around the line (about two winters in three fall inside it; axis −60% to +110%). <b>r</b> measures how tightly modelled snowfall follows ENSO. <b>Real record</b> is the same fit run on the best long measured snowfall record near the resort (30+ seasons), where one exists; trust it over the model where they disagree. <b>Strong El Niño record</b> counts strong and very strong winters (peak ONI ≥ 1.5) that beat normal. Select a resort name for its season-by-season chart.</p>
 </section>
 
 <section id="north-america"><h2>North America</h2>{table(na)}</section>
-<section id="europe"><h2>Europe</h2>{table(eu)}</section>
+<section id="europe"><h2>Europe</h2><p class="note">The model tilts the western Alps snowy, but the long station records in the Real record column do not. Read every European row as close to even odds.</p>{table(eu)}</section>
 <section id="asia"><h2>Asia</h2><p class="note">Northeast China and Korea lean snowy in El Niño winters, though Yunding's high odds partly reflect a run of snowier recent decades rather than ENSO. Japan's Sea of Japan resorts lean slightly dry.</p>{table(asia)}</section>
 <section id="southern"><h2>Southern Hemisphere</h2><p class="note">Seasons run January–December, so the 2026 season is the one that overlaps this El Niño. Its strength comes from the May–September ONI. Only 2 past seasons were strong, so the record column says little.</p>{table(sh, south=True)}</section>
 
@@ -237,10 +278,11 @@ details img {{ display:block; padding:0 8px 8px; border-radius:6px; }}
     <li><b>Snowfall</b> is modelled, not measured. It comes from ERA5 hourly reanalysis (Copernicus) at the grid point nearest each resort, 1950 to the present. ERA5's terrain is smoothed to about 28 km and often sits several hundred to over 1,000 m below the resort, so temperature is adjusted to mid-mountain at 6.5°C per km. Precipitation counts as snow below 0.5°C and rain above 2°C, at 7:1 snow to water. Totals will not match resort reports; departures from each resort's own normal are the meaningful numbers.</li>
     <li><b>El Niño strength</b> is the highest NOAA ONI reading in Nov–Mar for northern resorts and May–Sep for southern ones. The outlook uses the latest reading, +{ONI:.2f} for Jul–Sep. Events usually peak in early winter, so a higher peak would push every tilt slightly further.</li>
     <li><b>Chance above normal</b> assumes winters scatter evenly around the fitted line. It ignores long-term trends, which flatters resorts that have been snowier lately (Yunding) and penalises ones that have dried out.</li>
+    <li><b>Real-record odds</b> repeat the fit on measured station or resort records (see Validation). They use each record's own average rather than the 1991–2020 normal and cover fewer seasons, so they are noisier, but they are free of the model's blind spots.</li>
     <li><b>Samples are small.</b> There have been 9 strong or very strong El Niño winters since 1950. The fitted line uses all 76 complete winters, but an r below about 0.23 is within the range chance alone produces.</li>
     <li><b>Resort list and coordinates</b> come from ikonpass.com (2026–27 Base Pass) and public sources. Multi-mountain areas (Dolomiti Superski, Valle d'Aosta, Niseko United) use one representative point.</li>
   </ul>
-  <p class="note">Built with <code>ikon_snow.py</code> in the data-viz repo. Data: Copernicus Climate Change Service ERA5; NOAA Climate Prediction Center ONI.</p>
+  <p class="note">Built with <code>ikon_snow.py</code> in the data-viz repo. Data: Copernicus Climate Change Service ERA5; NOAA Climate Prediction Center ONI; NOAA COOP via RCC-ACIS; MeteoSwiss; GeoSphere Austria; eHYD; Météo-France; resort reports and OnTheSnow.</p>
 </section>
 </main>
 """
