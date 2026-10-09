@@ -51,26 +51,20 @@ def build():
     countries = pd.concat([nuts[nuts["LEVL_CODE"] == 0], uk[uk["NUTS_ID"] == "UK"]]).to_crs(4326)
     outside = geometry_mask(countries.geometry, sheep.shape, transform)
 
-    sheep, pop, area = (np.where(outside, 0, a) for a in (sheep, pop, area))
-    return sheep, pop, area, transform, countries
+    density = np.where(outside, np.nan, sheep / area)
+    # ponytail: floor population at 1 person so empty upland cells don't divide by zero;
+    # those cells read as "sheep per 100 people" of an imaginary single resident.
+    per_100 = np.where(outside, np.nan, sheep / np.maximum(pop, 1) * 100)
+    return density, per_100, transform, countries, pop[~outside].sum(), sheep[~outside].sum()
 
 
-def to_laea(arr, transform, res, resampling):
-    """Reproject a lon/lat grid onto a `res`-metre EPSG:3035 grid covering BBOX, to match the NUTS maps."""
-    w, h = (BBOX[2] - BBOX[0]) // res, (BBOX[3] - BBOX[1]) // res
+def to_laea(arr, transform):
+    """Reproject a lon/lat grid onto a 5 km EPSG:3035 grid covering BBOX, to match the NUTS maps."""
+    w, h = (BBOX[2] - BBOX[0]) // 5000, (BBOX[3] - BBOX[1]) // 5000
     out = np.full((h, w), np.nan)
     reproject(arr, out, src_transform=transform, src_crs="EPSG:4326", dst_transform=transform_from_bounds(*BBOX, w, h),
-              dst_crs="EPSG:3035", resampling=resampling, src_nodata=np.nan, dst_nodata=np.nan)
+              dst_crs="EPSG:3035", resampling=Resampling.nearest, src_nodata=np.nan, dst_nodata=np.nan)
     return out
-
-
-def ratios(sheep, pop, area):
-    """Sheep per km² and sheep per 100 people; NaN outside the map's countries (area 0)."""
-    with np.errstate(divide="ignore", invalid="ignore"):
-        land = area > 0
-        # ponytail: floor population at 1 person so empty upland cells don't divide by zero;
-        # those cells read as "sheep per 100 people" of an imaginary single resident.
-        return np.where(land, sheep / area, np.nan), np.where(land, sheep / np.maximum(pop, 1) * 100, np.nan)
 
 
 def plot(arr, countries, title, label, filename):
@@ -94,24 +88,12 @@ def plot(arr, countries, title, label, filename):
 
 if __name__ == "__main__":
     download(SOURCES)
-    sheep, pop, area, transform, countries = build()
-    print(f"in-map totals: {pop.sum() / 1e6:.0f}M people, {sheep.sum() / 1e6:.0f}M sheep")
+    density, per_100, transform, countries, total_pop, total_sheep = build()
+    print(f"in-map totals: {total_pop / 1e6:.0f}M people, {total_sheep / 1e6:.0f}M sheep")
     # Sanity check: NUTS countries hold roughly 600-700M people (incl. Turkey, Ukraine) and ~100-180M sheep.
-    assert 5e8 < pop.sum() < 8e8 and 5e7 < sheep.sum() < 2.5e8, (pop.sum(), sheep.sum())
+    assert 5e8 < total_pop < 8e8 and 5e7 < total_sheep < 2.5e8, (total_pop, total_sheep)
     countries = countries.to_crs(3035)
-
-    # ~10 km: compute ratios on the native 5' grid, then reproject for display.
-    density, per_100 = (to_laea(r, transform, 5000, Resampling.nearest) for r in ratios(sheep, pop, area))
-    plot(density, countries, "Sheep per km² in Europe, 2015 (~10 km grid)",
+    plot(to_laea(density, transform), countries, "Sheep per km² in Europe, 2015 (~10 km grid)",
          "sheep per km² (log scale)", "sheep_density_grid.png")
-    plot(per_100, countries, "Sheep per 100 people in Europe, 2015 (~10 km grid)",
+    plot(to_laea(per_100, transform), countries, "Sheep per 100 people in Europe, 2015 (~10 km grid)",
          "sheep per 100 people (log scale)", "sheep_per_100_people_grid.png")
-
-    # 50 km: sum the counts into equal-area cells first, then divide.
-    sums = [to_laea(a, transform, 50_000, Resampling.sum) for a in (sheep, pop, area)]
-    assert abs(np.nansum(sums[0]) / sheep.sum() - 1) < 0.02, "sum resampling should conserve sheep totals"
-    density, per_100 = ratios(*sums)
-    plot(density, countries, "Sheep per km² in Europe, 2015 (50 km grid)",
-         "sheep per km² (log scale)", "sheep_density_grid_50km.png")
-    plot(per_100, countries, "Sheep per 100 people in Europe, 2015 (50 km grid)",
-         "sheep per 100 people (log scale)", "sheep_per_100_people_grid_50km.png")

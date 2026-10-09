@@ -44,8 +44,6 @@ Eurostat files come from the SDMX 2.1 API as TSV:
 ![Sheep per km², grid](output/sheep_density_grid.png)
 ![Sheep per 100 people, grid](output/sheep_per_100_people_grid.png)
 
-50 km versions: [sheep per km²](output/sheep_density_grid_50km.png), [sheep per 100 people](output/sheep_per_100_people_grid_50km.png).
-
 ```
 python sheep_grid_maps.py       # first run downloads ~500 MB (mostly the population grid)
 ```
@@ -71,4 +69,3 @@ Citations:
 - **Sheep per person:** the population in each cell has a floor of 1 person. Without it, empty upland cells (Scottish Highlands, Norwegian fjells, Iceland) would divide by zero, so these cells show as extreme values instead.
 - **Density map artefacts:** GLW4 spreads census totals across cells using a model, so some census boundaries remain visible (for example French departments and German districts).
 - **Projection for display:** the results are reprojected to EPSG:3035 at 5 km for display only.
-- **50 km maps:** sheep, population and land area are each summed into 50 km EPSG:3035 cells (`Resampling.sum`) before dividing. The ratios are therefore true per-cell ratios, not averages of the 10 km ratios. Totals stay within 2% of the source, and the script checks this.
