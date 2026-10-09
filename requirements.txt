@@ -2,3 +2,5 @@ geopandas
 matplotlib
 requests
 rasterio
+cdsapi
+numpy

@@ -1,0 +1,78 @@
+name,country,region,access,normal_in,png,strong_above,strong_n,strong_median,to_date,n,slope,r,t,pred,sd,p_above
+Arapahoe Basin,USA,North America,unlimited,119.455,arapahoe-basin.png,6,9,0.832,,76,0.861,0.051,0.443,4.896,15.966,0.62
+Big Bear Mountain Resort,USA,North America,unlimited,49.491,big-bear-mountain-resort.png,7,9,53.761,,76,20.31,0.377,3.505,39.854,47.612,0.799
+Blue Mountain,Canada,North America,unlimited,88.25,blue-mountain.png,3,9,-19.912,,76,-4.407,-0.219,-1.931,-9.238,18.756,0.311
+Copper Mountain,USA,North America,unlimited,135.835,copper-mountain.png,5,9,1.005,,76,-1.069,-0.058,-0.503,0.734,17.451,0.517
+Eldora Mountain Resort,USA,North America,unlimited,99.29,eldora-mountain-resort.png,5,9,4.3,,76,2.171,0.099,0.856,9.859,20.838,0.682
+June Mountain,USA,North America,unlimited,119.679,june-mountain.png,6,9,11.805,,76,4.149,0.095,0.825,12.48,41.354,0.619
+Mammoth Mountain,USA,North America,unlimited,129.711,mammoth-mountain.png,5,9,9.544,,76,3.058,0.072,0.619,9.571,40.575,0.593
+Palisades Tahoe,USA,North America,unlimited,219.05,palisades-tahoe.png,7,9,5.382,,76,1.732,0.051,0.442,6.417,32.165,0.579
+Snow Valley,USA,North America,unlimited,43.138,snow-valley.png,7,9,47.916,,76,18.24,0.346,3.174,38.069,47.223,0.79
+Snowshoe,USA,North America,unlimited,89.172,snowshoe.png,5,9,1.661,,76,1.127,0.042,0.365,5.748,25.346,0.59
+Solitude Mountain Resort,USA,North America,unlimited,143.135,solitude-mountain-resort.png,5,9,4.991,,76,-1.608,-0.058,-0.501,3.968,26.35,0.56
+Stratton,USA,North America,unlimited,119.483,stratton.png,4,9,-0.643,,76,-0.587,-0.032,-0.272,-0.011,17.727,0.5
+Sugarbush Resort,USA,North America,unlimited,112.318,sugarbush-resort.png,5,9,4.594,,76,-2.343,-0.134,-1.166,-3.278,16.512,0.421
+Tremblant,Canada,North America,unlimited,112.107,tremblant.png,5,9,0.077,,76,-2.652,-0.146,-1.27,-6.856,17.161,0.345
+Winter Park Resort,USA,North America,unlimited,101.43,winter-park-resort.png,4,9,-0.174,,76,-0.258,-0.013,-0.114,3.127,18.533,0.567
+Aspen Snowmass,USA,North America,5 days + blackout,139.643,aspen-snowmass.png,5,9,0.122,,76,-0.624,-0.029,-0.253,2.844,20.298,0.556
+Big Sky Resort,USA,North America,5 days + blackout,136.408,big-sky-resort.png,3,9,-7.884,,76,-3.926,-0.259,-2.311,-4.876,13.962,0.363
+Brighton,USA,North America,5 days + blackout,147.553,brighton.png,5,9,4.247,,76,-1.501,-0.055,-0.478,3.972,25.822,0.561
+Snowbird,USA,North America,5 days + blackout,130.465,snowbird.png,5,9,3.962,,76,-1.12,-0.041,-0.355,4.276,25.945,0.565
+Steamboat,USA,North America,5 days + blackout,122.348,steamboat.png,5,9,0.399,,76,-2.955,-0.138,-1.197,-2.096,20.277,0.459
+Taos Ski Valley,USA,North America,5 days + blackout,65.721,taos-ski-valley.png,6,9,15.049,,76,8.689,0.29,2.609,18.86,27.363,0.755
+Alyeska Resort,USA,North America,5 days + blackout,343.251,alyeska-resort.png,4,9,-6.368,,76,3.89,0.153,1.329,9.278,24.061,0.65
+Crystal Mountain,USA,North America,5 days + blackout,322.731,crystal-mountain.png,4,9,-5.263,,76,-8.288,-0.329,-2.997,-8.504,22.726,0.354
+Mt. Bachelor,USA,North America,5 days + blackout,274.256,mt-bachelor.png,5,9,1.264,,76,-5.934,-0.266,-2.372,-6.209,20.554,0.381
+Schweitzer,USA,North America,5 days + blackout,164.253,schweitzer.png,3,9,-10.55,,76,-8.62,-0.334,-3.051,-11.087,23.218,0.316
+Sierra-at-Tahoe,USA,North America,5 days + blackout,208.22,sierra-at-tahoe.png,7,9,8.327,,76,2.888,0.085,0.732,8.438,32.406,0.603
+The Summit at Snoqualmie,USA,North America,5 days + blackout,325.666,the-summit-at-snoqualmie.png,3,9,-7.725,,76,-11.126,-0.363,-3.348,-11.086,27.313,0.342
+Blue Mountain Resort,USA,North America,5 days + blackout,48.179,blue-mountain-resort.png,3,9,-12.322,,76,-3.891,-0.101,-0.871,-3.078,36.73,0.467
+Boyne Mountain,USA,North America,5 days + blackout,69.486,boyne-mountain.png,2,9,-17.157,,76,-7.195,-0.304,-2.75,-10.584,21.504,0.311
+Camelback Resort,USA,North America,5 days + blackout,64.591,camelback-resort.png,2,9,-8.918,,76,-2.51,-0.079,-0.678,-1.755,30.439,0.477
+Granite Peak,USA,North America,5 days + blackout,50.079,granite-peak.png,3,9,-8.897,,76,-4.169,-0.148,-1.29,-4.726,26.566,0.429
+Killington-Pico,USA,North America,5 days + blackout,115.355,killington-pico.png,5,9,3.822,,76,-1.335,-0.071,-0.616,-1.094,17.809,0.475
+Loon Mountain,USA,North America,5 days + blackout,113.309,loon-mountain.png,4,9,-0.483,,76,-0.673,-0.032,-0.273,0.171,20.278,0.503
+Lutsen Mountains,USA,North America,5 days + blackout,53.9,lutsen-mountains.png,4,9,-28.045,,76,-7.254,-0.254,-2.255,-11.466,26.44,0.332
+Snowriver Mountain Resort,USA,North America,5 days + blackout,79.791,snowriver-mountain-resort.png,5,9,5.664,,76,-3.469,-0.153,-1.33,-2.602,21.433,0.452
+Sugarloaf,USA,North America,5 days + blackout,132.383,sugarloaf.png,6,9,6.586,,76,0.866,0.042,0.362,2.637,19.679,0.553
+Sunday River,USA,North America,5 days + blackout,112.019,sunday-river.png,6,9,10.768,,76,1.464,0.066,0.571,4.386,21.053,0.583
+The Highlands,USA,North America,5 days + blackout,70.886,the-highlands.png,2,9,-16.558,,76,-7.52,-0.303,-2.736,-11.72,22.588,0.302
+Cypress Mountain,Canada,North America,5 days + blackout,374.794,cypress-mountain.png,6,9,8.182,,76,-6.597,-0.206,-1.807,-1.005,30.002,0.487
+Le Massif de Charlevoix,Canada,North America,5 days + blackout,137.166,le-massif-de-charlevoix.png,7,9,4.536,,76,-1.104,-0.054,-0.463,-3.512,19.602,0.429
+Panorama,Canada,North America,5 days + blackout,96.677,panorama.png,4,9,-2.372,,76,-7.501,-0.29,-2.607,-4.763,23.64,0.42
+RED Mountain,Canada,North America,5 days + blackout,146.103,red-mountain.png,6,9,3.486,,76,-5.226,-0.215,-1.897,-3.062,22.635,0.446
+Revelstoke Mountain Resort,Canada,North America,5 days + blackout,180.998,revelstoke-mountain-resort.png,3,9,-7.197,,76,-7.296,-0.29,-2.61,-5.408,22.969,0.407
+SilverStar Mountain,Canada,North America,5 days + blackout,89.086,silverstar-mountain.png,4,9,-3.479,,76,-5.794,-0.247,-2.197,-3.593,21.673,0.434
+Lake Louise (SkiBig3),Canada,North America,5 days + blackout,133.23,lake-louise-skibig3.png,2,9,-12.475,,76,-5.706,-0.279,-2.499,-3.894,18.764,0.418
+Banff Sunshine (SkiBig3),Canada,North America,5 days + blackout,128.3,banff-sunshine-skibig3.png,2,9,-8.5,,76,-5.326,-0.264,-2.353,-3.031,18.599,0.435
+Mt Norquay (SkiBig3),Canada,North America,5 days + blackout,87.984,mt-norquay-skibig3.png,4,9,-14.423,,76,-4.965,-0.229,-2.024,-2.568,20.158,0.449
+Sun Peaks Resort,Canada,North America,5 days + blackout,105.354,sun-peaks-resort.png,5,9,1.356,,76,-6.64,-0.336,-3.064,-7.483,17.808,0.337
+Chamonix Mont-Blanc Valley,France,Europe,5 days + blackout,333.092,chamonix-mont-blanc-valley.png,5,9,8.78,,76,5.702,0.248,2.2,14.71,21.298,0.755
+Dolomiti Superski,Italy,Europe,5 days + blackout,133.893,dolomiti-superski.png,5,9,4.038,,76,-1.761,-0.056,-0.483,6.963,29.988,0.592
+Grandvalira Resorts,Andorra,Europe,5 days + blackout,125.121,grandvalira-resorts.png,3,9,-15.054,,76,-2.595,-0.109,-0.946,-2.52,22.544,0.456
+Ischgl,Austria,Europe,5 days + blackout,232.213,ischgl.png,5,9,3.039,,76,-0.721,-0.033,-0.28,3.292,21.181,0.562
+Kitzbuhel,Austria,Europe,5 days + blackout,172.966,kitzbuhel.png,5,9,0.648,,76,-1.501,-0.058,-0.499,3.42,24.722,0.555
+Megeve Ski Area,France,Europe,5 days + blackout,207.542,megeve-ski-area.png,5,9,5.24,,76,4.501,0.163,1.425,15.144,25.962,0.72
+St. Moritz,Switzerland,Europe,5 days + blackout,235.249,st-moritz.png,5,9,1.899,,76,1.409,0.059,0.506,6.098,22.879,0.605
+Valle d'Aosta,Italy,Europe,5 days + blackout,219.003,valle-d-aosta.png,4,9,-0.663,,76,5.731,0.258,2.301,14.625,20.473,0.762
+Zermatt Matterhorn,Switzerland,Europe,5 days + blackout,310.431,zermatt-matterhorn.png,3,9,-3.259,,76,4.463,0.19,1.663,11.348,22.061,0.697
+APPI Resort,Japan,Asia,5 days + blackout,114.114,appi-resort.png,6,9,8.464,,76,-0.422,-0.027,-0.235,2.43,14.77,0.565
+Lotte Arai Resort,Japan,Asia,5 days + blackout,185.544,lotte-arai-resort.png,3,9,-8.956,,76,-4.88,-0.276,-2.47,-8.576,16.236,0.299
+Beidahu Ski Resort,China,Asia,5 days + blackout,41.399,beidahu-ski-resort.png,5,9,3.582,,76,4.191,0.141,1.225,19.268,28.118,0.753
+Furano Ski Resort,Japan,Asia,5 days + blackout,127.556,furano-ski-resort.png,5,9,4.655,,76,-0.583,-0.031,-0.266,-2.198,18.03,0.451
+Lake Songhua Resort,China,Asia,5 days + blackout,37.059,lake-songhua-resort.png,4,9,-11.253,,76,2.174,0.067,0.577,16.903,30.945,0.708
+Madarao Mountain Resort,Japan,Asia,5 days + blackout,140.53,madarao-mountain-resort.png,3,9,-2.212,,76,-2.3,-0.157,-1.363,-4.706,13.861,0.367
+Mona Yongpyong,South Korea,Asia,5 days + blackout,57.991,mona-yongpyong.png,8,9,26.223,,76,9.043,0.2,1.757,27.918,42.297,0.745
+Mt.T (Tanigawadake Tenjindaira),Japan,Asia,5 days + blackout,127.658,mt-t-tanigawadake-tenjindaira.png,4,9,-9.522,,76,-1.547,-0.112,-0.969,-5.082,13.115,0.349
+Myoko Suginohara,Japan,Asia,5 days + blackout,154.18,myoko-suginohara.png,3,9,-3.198,,76,-2.051,-0.151,-1.317,-4.47,12.796,0.363
+NEKOMA Mountain,Japan,Asia,5 days + blackout,112.344,nekoma-mountain.png,4,9,-0.282,,76,-1.528,-0.095,-0.822,-1.496,15.277,0.461
+Niseko United,Japan,Asia,5 days + blackout,103.906,niseko-united.png,5,9,4.471,,76,0.329,0.016,0.139,1.241,19.42,0.525
+Shiga Kogen,Japan,Asia,5 days + blackout,179.77,shiga-kogen.png,5,9,1.065,,76,-1.062,-0.089,-0.766,-4.504,11.389,0.346
+Yunding Snow Park,China,Asia,5 days + blackout,24.252,yunding-snow-park.png,7,9,16.611,,76,9.59,0.305,2.75,26.392,28.655,0.821
+Zao Onsen,Japan,Asia,5 days + blackout,109.95,zao-onsen.png,6,9,6.618,,76,-0.164,-0.01,-0.089,1.505,15.205,0.539
+Coronet Peak,New Zealand,Southern Hemisphere,5 days + blackout,154.618,coronet-peak.png,2,2,12.063,-30.323,76,7.975,0.219,1.932,12.661,22.366,0.714
+The Remarkables,New Zealand,Southern Hemisphere,5 days + blackout,216.148,the-remarkables.png,2,2,9.293,-28.373,76,5.445,0.182,1.593,6.702,18.512,0.641
+Mt Hutt,New Zealand,Southern Hemisphere,5 days + blackout,188.814,mt-hutt.png,0,2,-6.904,-26.388,76,3.568,0.12,1.037,3.734,18.633,0.579
+Mt Buller,Australia,Southern Hemisphere,5 days + blackout,90.732,mt-buller.png,0,2,-35.161,-43.032,76,-10.131,-0.198,-1.737,-7.525,31.591,0.406
+Thredbo,Australia,Southern Hemisphere,5 days + blackout,83.634,thredbo.png,0,2,-27.345,-45.278,76,-8.004,-0.158,-1.375,-4.077,31.536,0.449
+Valle Nevado,Chile,Southern Hemisphere,5 days + blackout,221.69,valle-nevado.png,2,2,41.152,13.649,76,28.378,0.522,5.258,57.293,29.235,0.975

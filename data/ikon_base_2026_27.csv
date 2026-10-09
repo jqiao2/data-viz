@@ -1,0 +1,78 @@
+name,country,region,hemisphere,lat,lon,base_m,summit_m,access
+Arapahoe Basin,USA,Colorado,N,39.642,-105.871,3286,3978,unlimited
+Big Bear Mountain Resort,USA,California,N,34.229,-116.875,2134,2685,unlimited
+Blue Mountain,Canada,Ontario,N,44.501,-80.316,231,451,unlimited
+Copper Mountain,USA,Colorado,N,39.500,-106.156,2926,3753,unlimited
+Eldora Mountain Resort,USA,Colorado,N,39.937,-105.583,2804,3231,unlimited
+June Mountain,USA,California,N,37.768,-119.090,2300,3075,unlimited
+Mammoth Mountain,USA,California,N,37.631,-119.033,2424,3369,unlimited
+Palisades Tahoe,USA,California,N,39.197,-120.235,1890,2758,unlimited
+Snow Valley,USA,California,N,34.225,-117.036,2073,2407,unlimited
+Snowshoe,USA,West Virginia,N,38.410,-79.994,1020,1478,unlimited
+Solitude Mountain Resort,USA,Utah,N,40.620,-111.592,2435,3197,unlimited
+Stratton,USA,Vermont,N,43.113,-72.908,571,1181,unlimited
+Sugarbush Resort,USA,Vermont,N,44.136,-72.894,452,1244,unlimited
+Tremblant,Canada,Quebec,N,46.210,-74.585,265,875,unlimited
+Winter Park Resort,USA,Colorado,N,39.886,-105.763,2743,3676,unlimited
+Aspen Snowmass,USA,Colorado,N,39.209,-106.950,2473,3813,5 days + blackout
+Big Sky Resort,USA,Montana,N,45.284,-111.401,2072,3403,5 days + blackout
+Brighton,USA,Utah,N,40.598,-111.583,2669,3200,5 days + blackout
+Snowbird,USA,Utah,N,40.581,-111.656,2365,3353,5 days + blackout
+Steamboat,USA,Colorado,N,40.457,-106.804,2103,3221,5 days + blackout
+Taos Ski Valley,USA,New Mexico,N,36.596,-105.454,2806,3804,5 days + blackout
+Alyeska Resort,USA,Alaska,N,60.970,-149.098,76,838,5 days + blackout
+Crystal Mountain,USA,Washington,N,46.935,-121.475,1341,2137,5 days + blackout
+Mt. Bachelor,USA,Oregon,N,43.979,-121.688,1737,2763,5 days + blackout
+Schweitzer,USA,Idaho,N,48.368,-116.623,1219,1950,5 days + blackout
+Sierra-at-Tahoe,USA,California,N,38.799,-120.080,2024,2698,5 days + blackout
+The Summit at Snoqualmie,USA,Washington,N,47.424,-121.414,914,1646,5 days + blackout
+Blue Mountain Resort,USA,Pennsylvania,N,40.810,-75.513,140,488,5 days + blackout
+Boyne Mountain,USA,Michigan,N,45.164,-84.931,210,362,5 days + blackout
+Camelback Resort,USA,Pennsylvania,N,41.050,-75.357,381,650,5 days + blackout
+Granite Peak,USA,Wisconsin,N,44.932,-89.682,373,586,5 days + blackout
+Killington-Pico,USA,Vermont,N,43.620,-72.797,355,1293,5 days + blackout
+Loon Mountain,USA,New Hampshire,N,44.036,-71.621,290,930,5 days + blackout
+Lutsen Mountains,USA,Minnesota,N,47.663,-90.718,213,545,5 days + blackout
+Snowriver Mountain Resort,USA,Michigan,N,46.495,-89.990,400,584,5 days + blackout
+Sugarloaf,USA,Maine,N,45.031,-70.313,432,1291,5 days + blackout
+Sunday River,USA,Maine,N,44.473,-70.857,244,957,5 days + blackout
+The Highlands,USA,Michigan,N,45.468,-84.927,200,368,5 days + blackout
+Cypress Mountain,Canada,British Columbia,N,49.396,-123.204,910,1440,5 days + blackout
+Le Massif de Charlevoix,Canada,Quebec,N,47.282,-70.573,36,806,5 days + blackout
+Panorama,Canada,British Columbia,N,50.460,-116.239,1150,2375,5 days + blackout
+RED Mountain,Canada,British Columbia,N,49.103,-117.818,1185,2075,5 days + blackout
+Revelstoke Mountain Resort,Canada,British Columbia,N,50.958,-118.163,512,2225,5 days + blackout
+SilverStar Mountain,Canada,British Columbia,N,50.360,-119.062,1155,1915,5 days + blackout
+Lake Louise (SkiBig3),Canada,Alberta,N,51.443,-116.162,1646,2637,5 days + blackout
+Banff Sunshine (SkiBig3),Canada,Alberta,N,51.079,-115.783,1660,2730,5 days + blackout
+Mt Norquay (SkiBig3),Canada,Alberta,N,51.204,-115.600,1630,2133,5 days + blackout
+Sun Peaks Resort,Canada,British Columbia,N,50.883,-119.887,1198,2080,5 days + blackout
+Chamonix Mont-Blanc Valley,France,Auvergne-Rhone-Alpes,N,45.924,6.870,1035,3842,5 days + blackout
+Dolomiti Superski,Italy,Trentino-Alto Adige / Veneto,N,46.533,11.817,1000,3269,5 days + blackout
+Grandvalira Resorts,Andorra,Encamp / Canillo,N,42.561,1.661,1710,2640,5 days + blackout
+Ischgl,Austria,Tyrol,N,46.977,10.312,1377,2872,5 days + blackout
+Kitzbuhel,Austria,Tyrol,N,47.427,12.370,800,2000,5 days + blackout
+Megeve Ski Area,France,Auvergne-Rhone-Alpes,N,45.857,6.617,1113,2353,5 days + blackout
+St. Moritz,Switzerland,Graubunden,N,46.505,9.820,1822,3303,5 days + blackout
+Valle d'Aosta,Italy,Aosta Valley,N,45.708,7.311,1224,3480,5 days + blackout
+Zermatt Matterhorn,Switzerland,Valais,N,45.990,7.720,1620,3883,5 days + blackout
+APPI Resort,Japan,Iwate,N,40.002,140.965,500,1328,5 days + blackout
+Lotte Arai Resort,Japan,Niigata,N,36.990,138.180,329,1280,5 days + blackout
+Beidahu Ski Resort,China,Jilin,N,43.457,126.583,520,1408,5 days + blackout
+Furano Ski Resort,Japan,Hokkaido,N,43.326,142.354,235,1074,5 days + blackout
+Lake Songhua Resort,China,Jilin,N,43.680,126.690,400,934,5 days + blackout
+Madarao Mountain Resort,Japan,Nagano,N,36.861,138.300,900,1382,5 days + blackout
+Mona Yongpyong,South Korea,Gangwon,N,37.643,128.680,700,1458,5 days + blackout
+Mt.T (Tanigawadake Tenjindaira),Japan,Gunma,N,36.833,138.960,1319,1500,5 days + blackout
+Myoko Suginohara,Japan,Niigata,N,36.866,138.153,731,1855,5 days + blackout
+NEKOMA Mountain,Japan,Fukushima,N,37.620,140.040,830,1404,5 days + blackout
+Niseko United,Japan,Hokkaido,N,42.860,140.690,255,1200,5 days + blackout
+Shiga Kogen,Japan,Nagano,N,36.730,138.510,1330,2307,5 days + blackout
+Yunding Snow Park,China,Hebei,N,40.958,115.452,1700,2100,5 days + blackout
+Zao Onsen,Japan,Yamagata,N,38.165,140.410,780,1661,5 days + blackout
+Coronet Peak,New Zealand,Otago,S,-44.920,168.735,1170,1649,5 days + blackout
+The Remarkables,New Zealand,Otago,S,-45.055,168.814,1622,1943,5 days + blackout
+Mt Hutt,New Zealand,Canterbury,S,-43.470,171.530,1403,2086,5 days + blackout
+Mt Buller,Australia,Victoria,S,-37.146,146.440,1390,1805,5 days + blackout
+Thredbo,Australia,New South Wales,S,-36.505,148.300,1365,2037,5 days + blackout
+Valle Nevado,Chile,Santiago Metropolitan,S,-33.355,-70.249,2860,3670,5 days + blackout

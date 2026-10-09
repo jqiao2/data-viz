@@ -69,3 +69,45 @@ Citations:
 - **Sheep per person:** the population in each cell has a floor of 1 person. Without it, empty upland cells (Scottish Highlands, Norwegian fjells, Iceland) would divide by zero, so these cells show as extreme values instead.
 - **Density map artefacts:** GLW4 spreads census totals across cells using a model, so some census boundaries remain visible (for example French departments and German districts).
 - **Projection for display:** the results are reprojected to EPSG:3035 at 5 km for display only.
+
+## Ikon Base Pass snowfall in El Niño seasons
+
+![Summary](output/ikon/summary.png)
+
+```
+python ikon_snow.py   # downloads to data/raw/ (cached), writes output/ikon/<resort>.png + summary.png
+python ikon_validate.py   # compares with resort-reported and NOAA station totals in data/validation/
+python ikon_report.py     # writes output/ikon/report.html (opens the PNGs next to it)
+```
+
+Needs a free [Copernicus CDS](https://cds.climate.copernicus.eu) account. Accept the licence on the
+[ERA5 time-series dataset](https://cds.climate.copernicus.eu/datasets/reanalysis-era5-single-levels-timeseries?tab=download#manage-licences),
+then put your API key in `~/.cdsapirc`:
+
+```
+url: https://cds.climate.copernicus.eu/api
+key: <your key>
+```
+
+The resort list is `data/ikon_base_2026_27.csv`, one chart per 2026-27 Ikon Base Pass ski area. It was compiled from
+[ikonpass.com](https://www.ikonpass.com/en/shop-passes/ikon-base-pass); coordinates and elevations are approximate.
+
+- **Snowfall:** [ERA5 hourly point time series](https://cds.climate.copernicus.eu/datasets/reanalysis-era5-single-levels-timeseries)
+  (total precipitation, 2 m temperature, surface and sea-level pressure) at the grid point nearest each resort,
+  1950 to the present. ERA5's own snowfall is decided on terrain smoothed to about 28 km, often 1,000 m or more below
+  the resort. So the script gets the grid cell's height from the two pressures, shifts the temperature to mid-mountain
+  at 6.5°C/km, and counts precipitation as snow at or below 0.5°C and as rain at or above 2°C (linear in between),
+  at 7:1 snow to water. Totals still differ from resort reports, so the departures from each resort's own
+  1991–2020 normal are the meaningful numbers.
+- **Seasons:** Northern Hemisphere resorts use July 1–June 30. Southern Hemisphere resorts use the calendar year,
+  which is the winter that overlaps a developing El Niño (for example, 2015 for the 2015–16 event).
+- **El Niño strength:** [NOAA CPC ONI](https://www.cpc.ncep.noaa.gov/data/indices/oni.ascii.txt), taking the peak of
+  NDJ/DJF/JFM in the north and MJJ/JJA/JAS in the south. Weak is 0.5–0.9, Moderate 1.0–1.4, Strong 1.5–1.9 and
+  Very strong 2.0 or more. A season in progress is hatched and left out of the summary.
+- **Outlook:** for each resort, a least-squares line of % departure against peak ONI over every complete season,
+  La Niña included, evaluated at the latest ONI reading. The chance of above-normal snowfall assumes winters
+  scatter normally around that line. Results are in `output/ikon/forecast.csv`.
+- **Validation:** `data/validation/` holds resort-reported season totals (resort snowfall-history pages and
+  OnTheSnow, with the source URL on every row) and NOAA COOP station totals from the
+  [RCC-ACIS API](https://www.rcc-acis.org/docs_webservices.html). `ikon_validate.py` compares them with the model
+  season by season. California tracks well (r = 0.72–0.95); Taos and the Alps track poorly (r = 0.32–0.55).

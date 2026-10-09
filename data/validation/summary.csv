@@ -1,0 +1,12 @@
+resort,series,n,seasons,r,same_side,obs_mean,model_mean,ratio,strong_n,strong_obs_above,strong_model_above,oni_r_obs,oni_r_model
+Palisades Tahoe,resort report,25,2000-01..2024-25,0.952,0.96,406.36,215.672,1.884,3,3,3,0.058,0.026
+Mammoth Mountain,resort report,57,1969-70..2025-26,0.87,0.772,352.347,131.983,2.67,7,6,4,0.104,0.033
+Snow Valley,resort report,13,2012-13..2024-25,0.822,0.846,92.769,37.478,2.475,2,1,1,0.141,0.236
+Palisades Tahoe,NOAA station,73,1950-51..2025-26,0.822,0.822,187.315,229.86,0.815,8,5,5,0.043,0.101
+Big Bear Mountain Resort,resort report,24,1999-00..2024-25,0.757,0.875,114.042,46.761,2.439,3,2,2,0.147,0.196
+Big Bear Mountain Resort,NOAA station,41,1960-61..2025-26,0.719,0.78,58.822,47.616,1.235,5,3,4,0.247,0.347
+Megeve Ski Area,resort report,12,2012-13..2024-25,0.545,0.917,135.592,202.171,0.671,2,2,2,0.19,0.135
+Zermatt Matterhorn,resort report,13,2012-13..2024-25,0.482,0.615,162.931,303.875,0.536,2,1,1,-0.254,0.494
+Taos Ski Valley,resort report,13,2012-13..2024-25,0.334,0.462,177.077,62.581,2.83,2,1,2,0.318,0.362
+Chamonix Mont-Blanc Valley,resort report,12,2012-13..2024-25,0.333,0.583,194.575,333.393,0.584,2,2,2,0.711,0.476
+Taos Ski Valley,NOAA station,55,1950-51..2024-25,0.322,0.673,68.675,66.856,1.027,5,3,2,0.161,0.272
