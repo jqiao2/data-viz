@@ -29,15 +29,16 @@ MIN_YEAR = 2015
 BBOX = (2_400_000, 1_350_000, 7_800_000, 5_500_000)
 
 
-def download():
+def download(sources=SOURCES):
     RAW.mkdir(parents=True, exist_ok=True)
-    for name, url in SOURCES.items():
+    for name, url in sources.items():
         path = RAW / name
         if not path.exists():
             print(f"downloading {url}")
-            r = requests.get(url, timeout=300)
-            r.raise_for_status()
-            path.write_bytes(r.content)
+            with requests.get(url, timeout=300, stream=True) as r, open(path, "wb") as f:
+                r.raise_for_status()
+                for chunk in r.iter_content(1 << 20):
+                    f.write(chunk)
 
 
 def latest(path, **filters):

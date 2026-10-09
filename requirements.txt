@@ -1,3 +1,4 @@
 geopandas
 matplotlib
 requests
+rasterio
