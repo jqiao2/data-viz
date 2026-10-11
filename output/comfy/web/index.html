@@ -1,0 +1,356 @@
+<meta charset="utf-8">
+<title>Comfortable Days Finder</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+:root {
+  --ground: #f4f6f4; --panel: #ffffff; --ink: #15201a; --muted: #5a6a61; --faint: #8c9a92;
+  --rule: #dde3df; --accent: #2a78d6; --accent-ink: #ffffff; --stroke: #ffffff;
+  --r0: #e6eefa; --r1: #cde2fb; --r2: #9ec5f4; --r3: #5598e7; --r4: #2a78d6; --r5: #1c5cab; --r6: #0d366b;
+  --display: "Bricolage Grotesque", "Segoe UI", system-ui, sans-serif;
+  --body: "IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --ground: #101513; --panel: #171e1b; --ink: #e4ebe6; --muted: #9aaaa1; --faint: #6d7d74;
+    --rule: #2a3530; --accent: #5598e7; --accent-ink: #0b1220; --stroke: #101513;
+    --r0: #15233a; --r1: #184f95; --r2: #256abf; --r3: #3987e5; --r4: #6da7ec; --r5: #9ec5f4; --r6: #dcebfd;
+  }
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --ground: #101513; --panel: #171e1b; --ink: #e4ebe6; --muted: #9aaaa1; --faint: #6d7d74;
+  --rule: #2a3530; --accent: #5598e7; --accent-ink: #0b1220; --stroke: #101513;
+  --r0: #15233a; --r1: #184f95; --r2: #256abf; --r3: #3987e5; --r4: #6da7ec; --r5: #9ec5f4; --r6: #dcebfd;
+}
+* { box-sizing: border-box; }
+body { background: var(--ground); color: var(--ink); font: 15px/1.5 var(--body); }
+.wrap { max-width: 1240px; margin: 0 auto; padding-inline: 20px; padding-block: 28px 56px; display: grid; gap: 22px; }
+h1 { font: 700 clamp(28px, 4vw, 42px)/1.05 var(--display); margin: 0; letter-spacing: -0.01em; text-wrap: balance; }
+h2 { font: 600 20px/1.2 var(--display); margin: 0; }
+.lede { margin: 6px 0 0; color: var(--muted); max-width: 68ch; }
+.lede b { color: var(--ink); font-weight: 600; }
+
+.controls { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 14px 22px;
+  background: var(--panel); border: 1px solid var(--rule); border-radius: 10px; padding: 16px 18px; }
+.ctl { display: grid; gap: 4px; }
+.ctl label, .eyebrow { font-size: 12px; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); font-weight: 600; }
+.ctl .val { font: 500 20px/1.2 var(--mono); font-variant-numeric: tabular-nums; }
+.ctl input[type=range] { width: 100%; accent-color: var(--accent); }
+.dual { position: relative; height: 24px; }
+.dual input { position: absolute; inset: 0; pointer-events: none; background: none; -webkit-appearance: none; appearance: none; margin: 0; }
+.dual input::-webkit-slider-thumb { pointer-events: auto; -webkit-appearance: none; width: 18px; height: 18px; border-radius: 50%; background: var(--accent); border: 2px solid var(--panel); cursor: pointer; }
+.dual input::-moz-range-thumb { pointer-events: auto; width: 16px; height: 16px; border-radius: 50%; background: var(--accent); border: 2px solid var(--panel); cursor: pointer; }
+.dual .track { position: absolute; left: 0; right: 0; top: 10px; height: 4px; border-radius: 2px; background: var(--rule); }
+.dual .fill { position: absolute; top: 10px; height: 4px; border-radius: 2px; background: var(--accent); }
+.presets { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; border-top: 1px solid var(--rule); padding-top: 12px; }
+.presets button { font: 500 13px var(--body); color: var(--ink); background: transparent; border: 1px solid var(--rule); border-radius: 999px; padding: 5px 12px; cursor: pointer; }
+.presets button:hover { border-color: var(--accent); }
+.presets button[aria-pressed=true] { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+button:focus-visible, input:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+.usa { display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: 22px; align-items: start; }
+.mapbox { background: var(--panel); border: 1px solid var(--rule); border-radius: 10px; padding: 12px; position: relative; }
+#map { width: 100%; height: auto; display: block; }
+#map path { stroke: var(--stroke); stroke-width: .25; }
+#map path:hover { stroke: var(--ink); stroke-width: 1.2; }
+.legend { display: flex; align-items: center; gap: 10px; font: 12px var(--mono); color: var(--muted); padding: 6px 4px 0; flex-wrap: wrap; }
+.legend .bar { flex: 0 1 260px; height: 10px; border-radius: 2px; }
+.tip { position: absolute; pointer-events: none; background: var(--ink); color: var(--ground); font-size: 13px; padding: 6px 9px; border-radius: 6px; white-space: nowrap; transform: translate(-50%, calc(-100% - 10px)); }
+.tip b { font-family: var(--mono); }
+
+.best { display: grid; gap: 12px; }
+.hero { background: var(--panel); border: 1px solid var(--rule); border-radius: 10px; padding: 16px 18px; }
+.hero .num { font: 600 44px/1 var(--mono); font-variant-numeric: tabular-nums; margin-top: 6px; }
+.hero .num small { font: 500 14px var(--body); color: var(--muted); margin-left: 6px; }
+.hero .name { font: 600 18px/1.3 var(--display); margin-top: 4px; }
+ol.rank { list-style: none; margin: 0; padding: 0; display: grid; }
+ol.rank li { display: grid; grid-template-columns: 22px 1fr auto; gap: 8px; padding: 6px 2px; border-bottom: 1px solid var(--rule); font-size: 14px; }
+ol.rank li span:first-child { color: var(--faint); font: 12px/1.9 var(--mono); }
+ol.rank li span:last-child { font-family: var(--mono); font-variant-numeric: tabular-nums; }
+
+.cities { display: grid; gap: 10px; }
+.cities .head { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+.filter { font: 14px var(--body); padding: 6px 10px; border: 1px solid var(--rule); border-radius: 6px; background: var(--panel); color: var(--ink); width: 220px; max-width: 100%; }
+.tablebox { overflow-x: auto; background: var(--panel); border: 1px solid var(--rule); border-radius: 10px; }
+table { border-collapse: collapse; width: 100%; min-width: 760px; font-size: 14px; }
+th { font: 600 11px var(--body); letter-spacing: .06em; text-transform: uppercase; color: var(--muted); text-align: center; padding: 10px 2px 6px; position: sticky; top: 0; background: var(--panel); }
+th.l, td.l { text-align: left; padding-left: 14px; }
+td { padding: 2px; text-align: center; }
+td.l { white-space: nowrap; padding-right: 10px; }
+td.l .co { color: var(--muted); font-size: 12.5px; margin-left: 6px; }
+td.m { font: 11.5px/26px var(--mono); width: 6.2%; border-radius: 3px; border: 2px solid var(--panel); }
+td.tot { width: 170px; padding-right: 14px; }
+.totbar { display: flex; align-items: center; gap: 8px; font: 500 13px var(--mono); font-variant-numeric: tabular-nums; }
+.totbar i { display: block; height: 10px; background: var(--accent); border-radius: 0 4px 4px 0; }
+tr:hover td.l { color: var(--accent); }
+
+.notes { color: var(--muted); font-size: 13px; max-width: 80ch; display: grid; gap: 6px; }
+.notes p { margin: 0; }
+@media (max-width: 900px) { .usa { grid-template-columns: 1fr; } }
+</style>
+
+<div class="wrap">
+  <header>
+    <h1>Comfortable days, county by county</h1>
+    <p class="lede" id="lede"></p>
+  </header>
+
+  <section class="controls" aria-label="What counts as comfortable">
+    <div class="ctl">
+      <label for="tlo">Daily high</label>
+      <div class="val" id="tval"></div>
+      <div class="dual">
+        <div class="track"></div><div class="fill" id="tfill"></div>
+        <input type="range" id="tlo" min="-10" max="105" step="5" aria-label="Lowest acceptable high">
+        <input type="range" id="thi" min="-10" max="105" step="5" aria-label="Highest acceptable high">
+      </div>
+    </div>
+    <div class="ctl">
+      <label for="dew">Max dew point under</label>
+      <div class="val" id="dval"></div>
+      <input type="range" id="dew" min="20" max="85" step="5">
+    </div>
+    <div class="ctl">
+      <label for="cld">Daytime cloud cover under</label>
+      <div class="val" id="cval"></div>
+      <input type="range" id="cld" min="10" max="110" step="10">
+    </div>
+    <div class="ctl">
+      <label for="rain">Rain under</label>
+      <div class="val" id="rval"></div>
+      <input type="range" id="rain" min="1" max="5" step="1">
+    </div>
+    <div class="ctl">
+      <label for="snow">Snowfall under</label>
+      <div class="val" id="sval"></div>
+      <input type="range" id="snow" min="1" max="5" step="1">
+    </div>
+    <div class="presets" role="group" aria-label="Presets">
+      <span class="eyebrow">Presets</span>
+      <button type="button" data-p="25,70,55,60,2,5">My criteria</button>
+      <button type="button" data-p="25,70,55,110,2,5">Any cloud cover</button>
+      <button type="button" data-p="25,70,55,60,2,1">No snow either</button>
+      <button type="button" data-p="25,70,55,60,5,5">Rain allowed</button>
+      <button type="button" data-p="50,75,55,110,2,5">Mild, not muggy</button>
+      <button type="button" data-p="65,85,60,60,2,5">Warm and sunny</button>
+    </div>
+  </section>
+
+  <section class="usa">
+    <div class="mapbox">
+      <svg id="map" role="img" aria-label="Map of US counties shaded by comfortable days per year"></svg>
+      <div class="legend" id="legend"></div>
+      <div class="tip" id="tip" hidden></div>
+    </div>
+    <aside class="best">
+      <div class="hero">
+        <div class="eyebrow">Most comfortable county</div>
+        <div class="num" id="bestnum"></div>
+        <div class="name" id="bestname"></div>
+      </div>
+      <div>
+        <div class="eyebrow" style="margin-bottom:4px">Top 15 counties</div>
+        <ol class="rank" id="rank"></ol>
+      </div>
+    </aside>
+  </section>
+
+  <section class="cities">
+    <div class="head">
+      <h2>World cities, by month</h2>
+      <input class="filter" id="q" type="search" placeholder="Filter cities or countries" aria-label="Filter cities">
+    </div>
+    <div class="tablebox">
+      <table>
+        <thead><tr><th class="l">City</th><th>J</th><th>F</th><th>M</th><th>A</th><th>M</th><th>J</th><th>J</th><th>A</th><th>S</th><th>O</th><th>N</th><th>D</th><th class="l">Days / year</th></tr></thead>
+        <tbody id="cities"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <footer class="notes" id="notes"></footer>
+</div>
+
+<script>
+const $ = id => document.getElementById(id);
+const state = { tlo: 25, thi: 70, dew: 55, cld: 60, rain: 2, snow: 5 };
+const FIELDS = ["tlo", "thi", "dew", "cld", "rain", "snow"];
+let D, B, NR, NS, counties, cities, ramp;
+
+// Each uint32 holds the step from the previous bin index (high 20 bits) and that bin's day count (low 12).
+function decode(u) {
+  const n = u.length, t = new Uint8Array(n), d = new Uint8Array(n), c = new Uint8Array(n),
+    r = new Uint8Array(n), s = new Uint8Array(n), k = new Uint16Array(n);
+  let idx = 0;
+  for (let i = 0; i < n; i++) {
+    idx += u[i] >>> 12; k[i] = u[i] & 4095;
+    let j = idx;
+    s[i] = j % NS; j = (j - s[i]) / NS;
+    r[i] = j % NR; j = (j - r[i]) / NR;
+    c[i] = j % B.nc; j = (j - c[i]) / B.nc;
+    d[i] = j % B.nd; t[i] = (j - d[i]) / B.nd;
+  }
+  return { t, d, c, r, s, k };
+}
+
+async function loadHists() {
+  const b64 = await (await fetch("hist.txt")).text(), bin = atob(b64.trim()), gz = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) gz[i] = bin.charCodeAt(i);
+  const buf = new Uint8Array(await new Response(new Blob([gz]).stream().pipeThrough(new DecompressionStream("gzip"))).arrayBuffer());
+  const u = new Uint32Array(buf.buffer, buf.byteOffset, buf.byteLength / 4);
+  let off = 0;
+  return D.sizes.map(n => { const h = decode(u.subarray(off, off + n)); off += n; return h; });
+}
+
+function limits() {
+  return {
+    t0: (state.tlo - B.t0) / B.ts, t1: (state.thi - B.t0) / B.ts,
+    d1: state.dew >= 85 ? B.nd : (state.dew - B.d0) / B.ds,
+    c1: state.cld >= 110 ? B.nc : state.cld / B.cs,
+    r1: state.rain, s1: state.snow,
+  };
+}
+
+function count(h, L) {
+  let n = 0;
+  for (let i = 0; i < h.k.length; i++)
+    if (h.t[i] >= L.t0 && h.t[i] < L.t1 && h.d[i] < L.d1 && h.c[i] < L.c1 && h.r[i] < L.r1 && h.s[i] < L.s1) n += h.k[i];
+  return n;
+}
+
+function colorFor(v, max) {
+  const x = Math.min(1, v / max) * (ramp.length - 1), i = Math.floor(x), f = x - i;
+  const a = ramp[i], b = ramp[Math.min(i + 1, ramp.length - 1)];
+  return `rgb(${a.map((c, j) => Math.round(c + (b[j] - c) * f)).join(",")})`;
+}
+
+function readRamp() {
+  const cs = getComputedStyle(document.documentElement);
+  ramp = ["--r0", "--r1", "--r2", "--r3", "--r4", "--r5", "--r6"].map(v => {
+    const h = cs.getPropertyValue(v).trim().slice(1);
+    return [0, 2, 4].map(i => parseInt(h.slice(i, i + 2), 16));
+  });
+}
+
+const fmtT = f => `${f}°F`;
+const rainText = () => state.rain > B.rain.length ? "Any" : `${B.rain[state.rain - 1]} in`;
+const snowText = () => state.snow > B.snow.length ? "Any" : `${B.snow[state.snow - 1]} in`;
+function criteriaText() {
+  const dew = state.dew >= 85 ? "any dew point" : `a dew point under <b>${state.dew}°F</b>`;
+  const cld = state.cld >= 110 ? "any amount of cloud" : `daytime cloud cover under <b>${state.cld}%</b>`;
+  const rain = state.rain > B.rain.length ? "any rain" : `less than <b>${rainText()}</b> of rain`;
+  const snow = state.snow > B.snow.length ? "any amount of snow" : `less than <b>${snowText()}</b> of snowfall`;
+  return `Average days per year, ${D.years[0]}–${D.years[1]}, with a high of <b>${state.tlo}–${state.thi}°F</b>, ${dew}, ${cld}, ${rain}, and ${snow}.`;
+}
+
+function update() {
+  if (state.thi <= state.tlo) state.thi = state.tlo + 5;
+  $("tlo").value = state.tlo; $("thi").value = state.thi; $("dew").value = state.dew; $("cld").value = state.cld; $("rain").value = state.rain; $("snow").value = state.snow;
+  $("tval").textContent = `${fmtT(state.tlo)} to ${fmtT(state.thi)}`;
+  $("dval").textContent = state.dew >= 85 ? "No limit" : fmtT(state.dew);
+  $("cval").textContent = state.cld >= 110 ? "Any" : `${state.cld}%`;
+  $("rval").textContent = rainText() + (state.rain === 2 ? " (1 mm)" : "");
+  $("sval").textContent = snowText();
+  const lo = (state.tlo + 10) / 115 * 100, hi = (state.thi + 10) / 115 * 100;
+  $("tfill").style.left = lo + "%"; $("tfill").style.width = (hi - lo) + "%";
+  $("lede").innerHTML = criteriaText();
+  const key = FIELDS.map(f => state[f]).join(",");
+  document.querySelectorAll(".presets button").forEach(b => b.setAttribute("aria-pressed", b.dataset.p === key));
+
+  const L = limits(), years = D.years[1] - D.years[0] + 1;
+  let max = 1;
+  for (const c of counties) { c.v = count(c.h, L) / years; max = Math.max(max, c.v); }
+  const scaleMax = Math.max(10, Math.ceil(max / 10) * 10);
+  for (const c of counties) if (c.el) c.el.style.fill = colorFor(c.v, scaleMax);
+
+  const ranked = counties.slice().sort((a, b) => b.v - a.v);
+  if (ranked.length) {
+    $("bestnum").innerHTML = `${Math.round(ranked[0].v)}<small>days / year</small>`;
+    $("bestname").textContent = ranked[0].n;
+  }
+  $("rank").innerHTML = ranked.slice(0, 15).map((c, i) =>
+    `<li><span>${i + 1}</span><span>${c.n}</span><span>${Math.round(c.v)}</span></li>`).join("");
+
+  const stops = ramp.map((_, i) => colorFor(i / (ramp.length - 1) * scaleMax, scaleMax)).join(",");
+  $("legend").innerHTML = `<span>0</span><span class="bar" style="background:linear-gradient(90deg,${stops})"></span>` +
+    `<span>${scaleMax} days / year</span>`;
+
+  for (const c of cities) { c.mv = c.h.map(h => count(h, L) / years); c.v = c.mv.reduce((a, b) => a + b, 0); }
+  renderCities();
+}
+
+function renderCities() {
+  const q = $("q").value.trim().toLowerCase();
+  const rows = cities.filter(c => !q || (c.n + " " + c.c).toLowerCase().includes(q)).sort((a, b) => b.v - a.v);
+  const top = Math.max(1, ...cities.map(c => c.v));
+  $("cities").innerHTML = rows.map(c => {
+    const cells = c.mv.map(v => {
+      const dark = v > 15;
+      return `<td class="m" style="background:${colorFor(v, 31)};color:${dark ? "var(--ground)" : "var(--ink)"}" title="${v.toFixed(1)} days">${v >= 0.5 ? Math.round(v) : ""}</td>`;
+    }).join("");
+    return `<tr><td class="l">${c.n}<span class="co">${c.c}</span></td>${cells}` +
+      `<td class="tot"><div class="totbar"><i style="width:${c.v / top * 110}px"></i>${Math.round(c.v)}</div></td></tr>`;
+  }).join("");
+}
+
+function buildMap() {
+  const svg = $("map"), [w, h] = D.canvas, ns = "http://www.w3.org/2000/svg";
+  svg.setAttribute("viewBox", `0 0 ${w} ${h}`);
+  const tip = $("tip"), box = svg.parentElement;
+  for (const c of counties) {
+    if (!c.d) continue;
+    const p = document.createElementNS(ns, "path");
+    p.setAttribute("d", c.d);
+    p.addEventListener("pointermove", e => {
+      const r = box.getBoundingClientRect();
+      tip.hidden = false;
+      tip.style.left = (e.clientX - r.left) + "px"; tip.style.top = (e.clientY - r.top) + "px";
+      tip.innerHTML = `${c.n} · <b>${Math.round(c.v)}</b> days`;
+    });
+    p.addEventListener("pointerleave", () => { tip.hidden = true; });
+    svg.appendChild(p);
+    c.el = p;
+  }
+}
+
+function bind() {
+  const set = (k, id) => $(id).addEventListener("input", e => { state[k] = +e.target.value; update(); });
+  set("dew", "dew"); set("cld", "cld"); set("rain", "rain"); set("snow", "snow");
+  $("tlo").addEventListener("input", e => { state.tlo = Math.min(+e.target.value, state.thi - 5); update(); });
+  $("thi").addEventListener("input", e => { state.thi = Math.max(+e.target.value, state.tlo + 5); update(); });
+  document.querySelectorAll(".presets button").forEach(b => b.addEventListener("click", () => {
+    b.dataset.p.split(",").forEach((v, i) => { state[FIELDS[i]] = +v; });
+    update();
+  }));
+  $("q").addEventListener("input", renderCities);
+  matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => { readRamp(); update(); });
+  new MutationObserver(() => { readRamp(); update(); }).observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
+}
+
+async function start() {
+  let hists;
+  try {
+    D = await (await fetch("data.json")).json();
+    B = D.bins; NR = B.rain.length + 1; NS = B.snow.length + 1;
+    hists = await loadHists();
+  } catch (e) {
+    $("lede").textContent = "The weather data did not load. Reload the page to try again.";
+    return;
+  }
+  counties = D.counties.map((c, i) => ({ ...c, h: hists[i] }));
+  const off = counties.length;
+  cities = D.cities.map((c, i) => ({ n: c.n, c: c.c, h: hists.slice(off + 12 * i, off + 12 * i + 12) }));
+  $("notes").innerHTML = `
+    <p><b>US counties.</b> <a href="https://daymet.ornl.gov/">Daymet</a> v4, a 1 km daily grid built from weather stations, read at each county's most populated square kilometre (GHS-POP 2015), so the number describes where most people live rather than the mountains. Daymet gives the high, precipitation and the day's average humidity. Snow is split from rain by the day's mean temperature and counted at 10 in of snow per inch of water. Daymet has no daily peak dew point, so each day's average dew point gets that day's rise to its peak from NASA POWER.</p>
+    <p><b>Clouds and world cities.</b> <a href="https://power.larc.nasa.gov/">NASA POWER</a>: daytime cloud is CERES satellite cloud amount (1°, about 100 km, smoother than temperature). Cities use POWER for everything: hourly MERRA-2 reanalysis on local time (about 55 × 50 km cells), with rain and snow from its own split.</p>
+    <p><b>Limits.</b> Values are binned to 5°F, 10% cloud and the rain and snow steps shown, so the sliders move in those steps. Cities on a 55 km cell blur coastal and mountain differences; high-altitude cities such as Quito, Bogotá and Mexico City sit in cells lower than the city and read too warm.</p>`;
+  readRamp();
+  buildMap();
+  bind();
+  update();
+}
+start();
+</script>
