@@ -120,3 +120,46 @@ The resort list is `data/ikon_base_2026_27.csv`, one chart per 2026-27 Ikon Base
   line on the best record of 30+ seasons per resort (`enso_check.csv`). The model tracks good and bad seasons at a
   median r of about 0.65 and gets the Southern California and Pacific Northwest El Niño tilts right. The Alps
   stations show no El Niño link, though the model gives them a snowy one.
+
+## Comfortable weather days, US counties and world cities
+
+![US counties](output/comfy/us_counties.png)
+![World cities](output/comfy/cities.png)
+
+```
+python comfy_weather.py   # first run downloads ~3,100 Daymet points and ~1,900 NASA POWER cells (1-2 hours; needs the GHS-POP zip, see the sheep grid maps); later runs take seconds
+```
+
+A day counts as comfortable when the **daily high is 25–70°F**, the **daily maximum dew point is under 55°F**,
+**daytime cloud cover is under 60%** and **rain is under 0.04 in (1 mm)**. Snow days count by default
+(`SNOW_MAX_IN`). These are the constants at the top of `comfy_weather.py`; edit and re-run, the downloads are
+cached. Results are averaged over 2016–2025 and written to `output/comfy/us_counties.csv` and `cities.csv`, with a
+column per month.
+
+`output/comfy/web/` is an interactive version (`index.html`, `data.json`, `hist.txt`) with sliders for every
+threshold. Serve it over HTTP (`python -m http.server` in that folder), because it fetches its data files.
+
+- **US counties:** [Daymet v4](https://daymet.ornl.gov/single-pixel/), a 1 km daily grid interpolated from weather
+  stations, read at each county's most populated 30" (~1 km) cell in
+  [GHS-POP 2015](https://doi.org/10.2905/2FF68A52-5B5B-4A22-8F40-C41DA8332CFE), the same grid the sheep maps use.
+  The number therefore describes where most of a county's people live, not its mountains. (The Census mean
+  population centre was tried first, but it can land where nobody lives: Hawaii County's falls between Hilo and
+  Kona at 2,000 m.) Points saved in `data/raw/comfy/densest.csv`.
+  - Daymet gives the high (`tmax`), precipitation (`prcp`) and daily average vapour pressure (`vp`).
+  - Snow is split from precipitation by daily mean temperature: all snow at or below 0.5°C, all rain at or above
+    2°C, linear in between. Snowfall is counted at 10 in of snow per inch of water.
+  - Dew point is computed from `vp` with the Magnus formula. Daymet has no daily peak, so each day's average dew
+    point gets that day's rise from average to peak in the NASA POWER cell.
+- **Cloud cover (counties and cities):** NASA POWER `CLOUD_AMT_DAY`, CERES SYN1deg cloud amount during daylight
+  (1°). In polar night there is no daytime value, and those days count only when cloud is set to Any.
+- **World cities:** [NASA POWER](https://power.larc.nasa.gov/docs/services/api/) for everything. Daily high, max dew
+  point and total precipitation come from hourly MERRA-2 (`T2M`, `T2MDEW`, `PRECTOTCORR`) in local standard time,
+  and snow from daily `PRECSNOLAND`. Rain is total minus snow. The MERRA-2 cell is 0.5° × 0.625° (about 55 × 50 km).
+  The city list is `data/comfy_cities.csv`; add rows and re-run.
+- **Interactive page:** the page stores a histogram of days for each county and each city month, binned by high
+  (5°F), dew point (5°F), cloud (10%), rain (0.01 / 0.04 / 0.1 / 0.25 in) and snowfall (0.1 / 1 / 3 / 6 in). It
+  recounts every county and city in the browser, so the sliders move in those steps. `test_comfy_weather.py`
+  checks that the packed histogram gives the same count as the script.
+- **Caveats:** cities on a 55 km cell blur coastal and mountain gradients. High-altitude cities (Quito, Bogotá,
+  Mexico City) sit in cells whose average ground is lower than the city, so they read too warm. Reanalysis drizzles
+  more often than real weather, so a very low rain limit removes more days than a rain gauge would.
