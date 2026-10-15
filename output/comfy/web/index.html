@@ -109,9 +109,13 @@ tr:hover td.l { color: var(--accent); }
       </div>
     </div>
     <div class="ctl">
-      <label for="dew">Max dew point under</label>
+      <label for="dlo">Max dew point</label>
       <div class="val" id="dval"></div>
-      <input type="range" id="dew" min="20" max="85" step="5">
+      <div class="dual">
+        <div class="track"></div><div class="fill" id="dfill"></div>
+        <input type="range" id="dlo" min="-10" max="85" step="5" aria-label="Lowest acceptable dew point">
+        <input type="range" id="dew" min="-10" max="85" step="5" aria-label="Highest acceptable dew point">
+      </div>
     </div>
     <div class="ctl">
       <label for="cld">Daytime cloud cover under</label>
@@ -130,12 +134,12 @@ tr:hover td.l { color: var(--accent); }
     </div>
     <div class="presets" role="group" aria-label="Presets">
       <span class="eyebrow">Presets</span>
-      <button type="button" data-p="25,70,55,60,2,5">My criteria</button>
-      <button type="button" data-p="25,70,55,110,2,5">Any cloud cover</button>
-      <button type="button" data-p="25,70,55,60,2,1">No snow either</button>
-      <button type="button" data-p="25,70,55,60,5,5">Rain allowed</button>
-      <button type="button" data-p="50,75,55,110,2,5">Mild, not muggy</button>
-      <button type="button" data-p="65,85,60,60,2,5">Warm and sunny</button>
+      <button type="button" data-p="25,85,25,60,70,2,5">My criteria</button>
+      <button type="button" data-p="25,70,-10,55,110,2,5">Any cloud cover</button>
+      <button type="button" data-p="25,70,-10,55,60,2,1">No snow either</button>
+      <button type="button" data-p="25,70,-10,55,60,5,5">Rain allowed</button>
+      <button type="button" data-p="50,75,-10,55,110,2,5">Mild, not muggy</button>
+      <button type="button" data-p="65,85,-10,60,60,2,5">Warm and sunny</button>
     </div>
   </section>
 
@@ -176,8 +180,8 @@ tr:hover td.l { color: var(--accent); }
 
 <script>
 const $ = id => document.getElementById(id);
-const state = { tlo: 25, thi: 70, dew: 55, cld: 60, rain: 2, snow: 5 };
-const FIELDS = ["tlo", "thi", "dew", "cld", "rain", "snow"];
+const state = { tlo: 25, thi: 85, dlo: 25, dew: 60, cld: 70, rain: 2, snow: 5 };
+const FIELDS = ["tlo", "thi", "dlo", "dew", "cld", "rain", "snow"];
 let D, B, NR, NS, counties, cities, ramp;
 
 // Each uint32 holds the step from the previous bin index (high 20 bits) and that bin's day count (low 12).
@@ -208,6 +212,7 @@ async function loadHists() {
 function limits() {
   return {
     t0: (state.tlo - B.t0) / B.ts, t1: (state.thi - B.t0) / B.ts,
+    d0: state.dlo <= -10 ? 0 : (state.dlo - B.d0) / B.ds,
     d1: state.dew >= 85 ? B.nd : (state.dew - B.d0) / B.ds,
     c1: state.cld >= 110 ? B.nc : state.cld / B.cs,
     r1: state.rain, s1: state.snow,
@@ -217,7 +222,7 @@ function limits() {
 function count(h, L) {
   let n = 0;
   for (let i = 0; i < h.k.length; i++)
-    if (h.t[i] >= L.t0 && h.t[i] < L.t1 && h.d[i] < L.d1 && h.c[i] < L.c1 && h.r[i] < L.r1 && h.s[i] < L.s1) n += h.k[i];
+    if (h.t[i] >= L.t0 && h.t[i] < L.t1 && h.d[i] >= L.d0 && h.d[i] < L.d1 && h.c[i] < L.c1 && h.r[i] < L.r1 && h.s[i] < L.s1) n += h.k[i];
   return n;
 }
 
@@ -239,7 +244,10 @@ const fmtT = f => `${f}°F`;
 const rainText = () => state.rain > B.rain.length ? "Any" : `${B.rain[state.rain - 1]} in`;
 const snowText = () => state.snow > B.snow.length ? "Any" : `${B.snow[state.snow - 1]} in`;
 function criteriaText() {
-  const dew = state.dew >= 85 ? "any dew point" : `a dew point under <b>${state.dew}°F</b>`;
+  const dew = state.dlo <= -10 && state.dew >= 85 ? "any dew point"
+    : state.dlo <= -10 ? `a dew point under <b>${state.dew}°F</b>`
+    : state.dew >= 85 ? `a dew point of at least <b>${state.dlo}°F</b>`
+    : `a dew point of <b>${state.dlo}–${state.dew}°F</b>`;
   const cld = state.cld >= 110 ? "any amount of cloud" : `daytime cloud cover under <b>${state.cld}%</b>`;
   const rain = state.rain > B.rain.length ? "any rain" : `less than <b>${rainText()}</b> of rain`;
   const snow = state.snow > B.snow.length ? "any amount of snow" : `less than <b>${snowText()}</b> of snowfall`;
@@ -248,14 +256,17 @@ function criteriaText() {
 
 function update() {
   if (state.thi <= state.tlo) state.thi = state.tlo + 5;
-  $("tlo").value = state.tlo; $("thi").value = state.thi; $("dew").value = state.dew; $("cld").value = state.cld; $("rain").value = state.rain; $("snow").value = state.snow;
+  if (state.dew <= state.dlo) state.dew = state.dlo + 5;
+  $("tlo").value = state.tlo; $("thi").value = state.thi; $("dlo").value = state.dlo; $("dew").value = state.dew; $("cld").value = state.cld; $("rain").value = state.rain; $("snow").value = state.snow;
   $("tval").textContent = `${fmtT(state.tlo)} to ${fmtT(state.thi)}`;
-  $("dval").textContent = state.dew >= 85 ? "No limit" : fmtT(state.dew);
+  $("dval").textContent = `${state.dlo <= -10 ? "No min" : fmtT(state.dlo)} to ${state.dew >= 85 ? "no max" : fmtT(state.dew)}`;
   $("cval").textContent = state.cld >= 110 ? "Any" : `${state.cld}%`;
   $("rval").textContent = rainText() + (state.rain === 2 ? " (1 mm)" : "");
   $("sval").textContent = snowText();
   const lo = (state.tlo + 10) / 115 * 100, hi = (state.thi + 10) / 115 * 100;
   $("tfill").style.left = lo + "%"; $("tfill").style.width = (hi - lo) + "%";
+  const dl = (state.dlo + 10) / 95 * 100, dh = (state.dew + 10) / 95 * 100;
+  $("dfill").style.left = dl + "%"; $("dfill").style.width = (dh - dl) + "%";
   $("lede").innerHTML = criteriaText();
   const key = FIELDS.map(f => state[f]).join(",");
   document.querySelectorAll(".presets button").forEach(b => b.setAttribute("aria-pressed", b.dataset.p === key));
@@ -318,9 +329,11 @@ function buildMap() {
 
 function bind() {
   const set = (k, id) => $(id).addEventListener("input", e => { state[k] = +e.target.value; update(); });
-  set("dew", "dew"); set("cld", "cld"); set("rain", "rain"); set("snow", "snow");
+  set("cld", "cld"); set("rain", "rain"); set("snow", "snow");
   $("tlo").addEventListener("input", e => { state.tlo = Math.min(+e.target.value, state.thi - 5); update(); });
   $("thi").addEventListener("input", e => { state.thi = Math.max(+e.target.value, state.tlo + 5); update(); });
+  $("dlo").addEventListener("input", e => { state.dlo = Math.min(+e.target.value, state.dew - 5); update(); });
+  $("dew").addEventListener("input", e => { state.dew = Math.max(+e.target.value, state.dlo + 5); update(); });
   document.querySelectorAll(".presets button").forEach(b => b.addEventListener("click", () => {
     b.dataset.p.split(",").forEach((v, i) => { state[FIELDS[i]] = +v; });
     update();
