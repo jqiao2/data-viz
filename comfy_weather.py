@@ -1,9 +1,9 @@
-"""Days of comfortable weather per year, for every US county and a list of world cities.
+"""Days of comfortable weather per year, for every US county and ~900 US and world cities.
 
 Run: python comfy_weather.py  -> downloads Daymet 1 km county data and NASA POWER cell data (both free, no key)
 to data/raw/comfy/,
 writes output/comfy/us_counties.png, cities.png, matching CSVs and the interactive page's data
-(output/comfy/web/data.json). City list: data/comfy_cities.csv. Downloads are cached, so changing the
+(output/comfy/web/). City list: data/comfy_cities.csv (see build_cities). Downloads are cached, so changing the
 thresholds below and re-running takes seconds. See README.md.
 """
 import base64
@@ -130,7 +130,7 @@ def download_daymet(p):
     for attempt in range(6):
         try:
             r = requests.get(DAYMET, params=q, timeout=180)
-            if r.status_code == 400:  # outside Daymet's grid (western Alaska); county_data falls back to POWER
+            if r.status_code == 400:  # outside Daymet's grid (western Alaska); point_data falls back to POWER
                 return
             r.raise_for_status()
             break
@@ -153,6 +153,9 @@ def daily(c):
     """Daily DataFrame for a POWER cell (used for cities): tmax, dmax (°F), cloud (%, daytime),
     rain (in of water), snow (in of snowfall). Rain is total precipitation minus snow."""
     d = power_raw(c)
+    # PRECSNOLAND is land-only, so all-ocean cells (Malé, Majuro, Funafuti) have none; call it no snow.
+    # ponytail: a cold all-ocean cell would count its snow as rain; switch to PRECSNO if one is ever added.
+    d["snow"] = d.snow.fillna(0) if d.snow.isna().all() else d.snow
     return pd.DataFrame({"tmax": c_to_f(d.tmax), "dmax": c_to_f(d.dmax), "cloud": d.cloud,
                          "rain": (d.precip - d.snow).clip(lower=0) / MM_PER_IN,
                          "snow": d.snow / MM_PER_IN * SNOW_RATIO})
@@ -164,16 +167,16 @@ def dew_c(vp_pa):
     return 243.5 * x / (17.67 - x)
 
 
-def county_daily(r):
-    """Daily DataFrame for a county: Daymet 1 km high, dew point, rain and snow at its most populated cell,
-    cloud from its POWER cell.
+def point_daily(lat, lon, c):
+    """Daily DataFrame for a US point (a county's most populated cell, or a city): Daymet 1 km high, dew point,
+    rain and snow there, cloud from its POWER cell c.
 
     Daymet has only the day's average vapour pressure, so its average dew point gets the cell's rise from
     average to peak that day (POWER max minus mean dew point). Snow is split from Daymet precipitation by
     the day's mean temperature."""
-    m = pd.read_csv(daymet_path(r.lat, r.lon))
+    m = pd.read_csv(daymet_path(lat, lon))
     m.index = pd.to_datetime(m.year.astype(str), format="%Y") + pd.to_timedelta(m.yday - 1, unit="D")
-    w = power_raw(r.cell).reindex(m.index)
+    w = power_raw(c).reindex(m.index)
     tavg = (m["tmax (deg c)"] + m["tmin (deg c)"]) / 2
     snow_frac = ((RAIN_C - tavg) / (RAIN_C - SNOW_C)).clip(0, 1)
     prcp = m["prcp (mm/day)"] / MM_PER_IN
@@ -183,8 +186,9 @@ def county_daily(r):
                          "snow": prcp * snow_frac * SNOW_RATIO})
 
 
-def county_data(r):
-    return county_daily(r) if daymet_path(r.lat, r.lon).exists() else daily(r.cell)
+def point_data(lat, lon, c):
+    """Daymet where it covers the point, otherwise (western Alaska) the POWER cell alone."""
+    return point_daily(lat, lon, c) if daymet_path(lat, lon).exists() else daily(c)
 
 
 # --- data --------------------------------------------------------------------------------------------
@@ -207,6 +211,42 @@ def densest_cells(g):
             x, y = t * (j + 0.5, i + 0.5)
             out.append((r.GEOID, round(y, 4), round(x, 4)))
     return pd.DataFrame(out, columns=["GEOID", "lat", "lon"])
+
+
+NE_ZIP = RAW / "ne_10m_populated_places_simple.zip"
+NE_URL = "https://naciscdn.org/naturalearth/10m/cultural/ne_10m_populated_places_simple.zip"
+US = "United States"
+
+
+def build_cities(n_us=350, n_world=550):
+    """Rewrite CITIES from Natural Earth populated places: the n_us largest US cities by pop_max (plus each
+    state's largest) and n_world elsewhere (every capital, each country's largest city if over 1M, the rows
+    already in CITIES, then the largest of the rest). Existing rows keep their name and coordinates and take
+    the population of the Natural Earth place within 0.2° (0 if none)."""
+    if not NE_ZIP.exists():
+        r = requests.get(NE_URL, timeout=300)
+        r.raise_for_status()
+        NE_ZIP.write_bytes(r.content)
+    ne = gpd.read_file(NE_ZIP)
+    ne = pd.DataFrame(dict(name=ne.name.str.split().str.join(" "), lat=ne.latitude, lon=ne.longitude,
+                           country=ne.adm0name.replace({"United States of America": US}), pop=ne.pop_max,
+                           cap=ne.adm0cap == 1, state=ne.adm1name)).sort_values("pop", ascending=False)
+    us, world = ne[ne.country == US], ne[ne.country != US]
+    us = us[us.index.isin(us.index[:n_us]) | us.index.isin(us.groupby("state").head(1).index)]
+    old = pd.read_csv(CITIES)
+    for i, r in old.iterrows():
+        d = np.hypot(world.lat - r.lat, (world.lon - r.lon) * np.cos(np.radians(r.lat)))
+        j = d.idxmin()
+        old.loc[i, "pop"] = world["pop"][j] if d[j] < 0.2 else 0
+        if d[j] < 0.2:
+            old.loc[i, "country"] = world.country[j]
+            world = world.drop(j)
+    big = world.groupby("country").head(1)
+    must = world.cap | world.index.isin(big.index[big["pop"] >= 1e6])
+    rest = world[~must].head(n_world - len(old) - must.sum())
+    out = pd.concat([us, old, world[must], rest])[["name", "country", "lat", "lon", "pop"]]
+    out = out.round({"lat": 2, "lon": 2}).astype({"pop": int}).sort_values("pop", ascending=False)
+    out.to_csv(CITIES, index=False, encoding="utf-8")
 
 
 def counties():
@@ -295,7 +335,7 @@ def city_chart(rows, path):
     bx.set_title("Days / year", fontsize=10, color=MUTED, loc="left")
     for s in ax.spines.values():
         s.set_visible(False)
-    fig.suptitle("Comfortable days by month, world cities", x=0.02, ha="left", fontsize=16,
+    fig.suptitle("Comfortable days by month, the 80 most comfortable cities", x=0.02, ha="left", fontsize=16,
                  fontweight="bold", color=INK, y=1 - 0.4 / fig.get_figheight())
     fig.text(0.02, 1 - 0.7 / fig.get_figheight(), criteria(), fontsize=9.5, color=MUTED)
     save(fig, path)
@@ -339,8 +379,9 @@ def svg_path(geom):
                    for poly in polys for ring in (poly.exterior, *poly.interiors))
 
 
-def county_paths(g):
-    """{GEOID: SVG path} pre-projected to CANVAS: Albers lower 48, Alaska and Hawaii insets bottom-left."""
+def insets(g):
+    """{inset: (its counties projected, CRS, affine onto CANVAS)}: Albers lower 48, Alaska and Hawaii insets
+    bottom-left."""
     out = {}
     for key, (crs, (x0, y0, w, h)) in INSETS.items():
         part = g[~g.STATEFP.isin(["02", "15"])] if key == "conus" else g[g.STATEFP == key]
@@ -349,25 +390,64 @@ def county_paths(g):
             part = part.clip((-2.3e6, 0, 1.6e6, 2.5e6))
         minx, miny, maxx, maxy = part.total_bounds
         k = min(w / (maxx - minx), h / (maxy - miny))
+        out[key] = part, crs, [k, 0, 0, -k, x0 - minx * k, y0 + maxy * k]
+    return out
+
+
+def county_paths(ins):
+    """{GEOID: SVG path} pre-projected to CANVAS."""
+    out = {}
+    for part, _, t in ins.values():
         for geoid, geom in zip(part.GEOID, part.geometry):
-            geom = affine_transform(geom, [k, 0, 0, -k, x0 - minx * k, y0 + maxy * k]).simplify(0.4)
+            geom = affine_transform(geom, t).simplify(0.4)
             if not geom.is_empty:
                 out[geoid] = svg_path(geom)
     return out
 
 
-def export_web(g, county_hists, cities, city_daily, out):
-    """data.json (shapes, names, bins, entries per histogram) + hist.txt (every histogram packed in order,
-    counties then each city's 12 months, gzipped and base64'd because artifact hosting serves only text)."""
-    paths = county_paths(g)
-    hists = [county_hists[r.GEOID] for r in g.itertuples()]
-    hists += [hist(d[d.index.month == m]) for d in city_daily for m in range(1, 13)]
-    out.mkdir(parents=True, exist_ok=True)
+def canvas_xy(ins, lat, lon):
+    """[x, y] of a US point on CANVAS, through the same inset projection as the county paths."""
+    key = "02" if lon < -129 and lat > 45 else "15" if lon < -150 else "conus"
+    _, crs, t = ins[key]
+    p = affine_transform(gpd.GeoSeries(gpd.points_from_xy([lon], [lat]), crs=4326).to_crs(crs).iloc[0], t)
+    return [round(p.x, 1), round(p.y, 1)]
+
+
+def zoom_tiers(n, tiers):
+    """Minimum label zoom for each of n places ranked by population: tiers is [(count, zoom), ...], the rest 8."""
+    z = [zz for k, zz in tiers for _ in range(k)]
+    return (z + [8] * n)[:n]
+
+
+def write_hists(path, hists):
+    """Every histogram packed in order, gzipped and base64'd because artifact hosting serves only text."""
     packed = np.concatenate([pack(h) for h in hists]).astype("<u4")
-    (out / "hist.txt").write_bytes(base64.b64encode(gzip.compress(packed.tobytes(), 9)))
-    data = dict(years=[YEARS[0], YEARS[-1]], bins=BINS, canvas=CANVAS, sizes=[len(h[0]) for h in hists],
+    path.write_bytes(base64.b64encode(gzip.compress(packed.tobytes(), 9)))
+    return [len(h[0]) for h in hists]
+
+
+def export_web(g, county_hists, cities, city_daily, out):
+    """data.json (shapes, names, bins, cities, entries per histogram) + hist.txt (one histogram per county)
+    + cities_hist.txt (each city's 12 months, in data.json order). cities come sorted by population."""
+    ins = insets(g)
+    paths = county_paths(ins)
+    out.mkdir(parents=True, exist_ok=True)
+    sizes = write_hists(out / "hist.txt", [county_hists[r.GEOID] for r in g.itertuples()])
+    city_sizes = write_hists(out / "cities_hist.txt",
+                             [hist(d[d.index.month == m]) for d in city_daily for m in range(1, 13)])
+    us = [c["country"] == US for c in cities]
+    zs = {True: iter(zoom_tiers(sum(us), [(15, 1), (35, 2), (100, 4)])),
+          False: iter(zoom_tiers(len(us) - sum(us), [(30, 1), (70, 2), (200, 4)]))}
+    city_rows = []
+    for c, u in zip(cities, us):
+        row = dict(n=c["name"], c=c["country"], lat=round(c["lat"], 2), lon=round(c["lon"], 2),
+                   p=int(c["pop"]), z=next(zs[u]))
+        if u:
+            row["xy"] = canvas_xy(ins, c["lat"], c["lon"])
+        city_rows.append(row)
+    data = dict(years=[YEARS[0], YEARS[-1]], bins=BINS, canvas=CANVAS, sizes=sizes, city_sizes=city_sizes,
                 counties=[dict(id=r.GEOID, n=f"{r.NAME}, {r.STUSPS}", d=paths.get(r.GEOID, "")) for r in g.itertuples()],
-                cities=[dict(n=c["name"], c=c["country"]) for c in cities])
+                cities=city_rows)
     (out / "data.json").write_text(json.dumps(data, separators=(",", ":")), encoding="utf-8")
 
 
@@ -383,19 +463,28 @@ def main():
     fetch_census()
     g = counties()
     g["cell"] = [cell(la, lo) for la, lo in zip(g.lat, g.lon)]
+    if "pop" not in CITIES.read_text(encoding="utf-8").splitlines()[0]:
+        build_cities()
     with open(CITIES, encoding="utf-8") as f:
-        cities = list(csv.DictReader(f))
+        cities = sorted(csv.DictReader(f), key=lambda c: -int(c["pop"]))
     for c in cities:
-        c["cell"] = cell(float(c["lat"]), float(c["lon"]))
+        c["lat"], c["lon"] = float(c["lat"]), float(c["lon"])
+        c["cell"] = cell(c["lat"], c["lon"])
+    us_pts = [(c["lat"], c["lon"]) for c in cities if c["country"] == US]
+    # "Portland, OR": state from the nearest county, since many US city names repeat
+    pts = gpd.GeoDataFrame(geometry=gpd.points_from_xy([p[1] for p in us_pts], [p[0] for p in us_pts]), crs=4326)
+    st = gpd.sjoin_nearest(pts.to_crs(5070), g[["STUSPS", "geometry"]].to_crs(5070)).groupby(level=0).STUSPS.first()
+    for c, s in zip((c for c in cities if c["country"] == US), st.sort_index()):
+        c["name"] += f", {s}"
     todo = sorted(set(g.cell) | {c["cell"] for c in cities})
-    print(len(todo), "POWER cells,", len(g), "Daymet counties", flush=True)
+    print(len(todo), "POWER cells,", len(g), "Daymet counties,", len(us_pts), "Daymet cities", flush=True)
     with ThreadPoolExecutor(10) as pool:  # each request takes seconds; ten at once keeps a first run near an hour
         list(pool.map(download, todo))
-        list(pool.map(download_daymet, [(r.lat, r.lon) for r in g.itertuples()]))
+        list(pool.map(download_daymet, [(r.lat, r.lon) for r in g.itertuples()] + us_pts))
 
     county_hists, months = {}, {}
     for r in g.itertuples():
-        d = county_data(r)
+        d = point_data(r.lat, r.lon, r.cell)
         county_hists[r.GEOID], months[r.GEOID] = hist(d), per_month(d)
     g["months"] = g.GEOID.map(months)
     g["days"] = g.months.map(sum)
@@ -404,10 +493,11 @@ def main():
               sorted(([r.GEOID, r.NAME, r.STUSPS, round(r.days, 1), *r.months] for r in g.itertuples()),
                      key=lambda x: -x[3]))
 
-    city_daily = [daily(c["cell"]) for c in cities]
+    city_daily = [point_data(c["lat"], c["lon"], c["cell"]) if c["country"] == US else daily(c["cell"])
+                  for c in cities]
     rows = [dict(name=c["name"], country=c["country"], months=(ms := per_month(d)), year=sum(ms))
             for c, d in zip(cities, city_daily)]
-    city_chart(rows, OUT / "cities.png")
+    city_chart(sorted(rows, key=lambda r: -r["year"])[:80], OUT / "cities.png")  # all ~900 would be unreadable
     write_csv(OUT / "cities.csv", ["city", "country", "days", *MONTHS],
               [[r["name"], r["country"], round(r["year"], 1), *r["months"]] for r in sorted(rows, key=lambda r: -r["year"])])
     export_web(g, county_hists, cities, city_daily, OUT / "web")

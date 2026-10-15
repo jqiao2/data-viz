@@ -134,9 +134,10 @@ A day counts as comfortable when the **daily high is 25–70°F**, the **daily m
 **daytime cloud cover is under 60%** and **rain is under 0.04 in (1 mm)**. Snow days count by default
 (`SNOW_MAX_IN`). These are the constants at the top of `comfy_weather.py`; edit and re-run, the downloads are
 cached. Results are averaged over 2016–2025 and written to `output/comfy/us_counties.csv` and `cities.csv`, with a
-column per month.
+column per month. `cities.png` shows only the 80 cities with the most comfortable days.
 
-`output/comfy/web/` is an interactive version (`index.html`, `data.json`, `hist.txt`) with sliders for every
+`output/comfy/web/` is an interactive version (`index.html`, `data.json`, `hist.txt` for counties,
+`cities_hist.txt` for cities) with sliders for every
 threshold. Serve it over HTTP (`python -m http.server` in that folder), because it fetches its data files.
 
 - **US counties:** [Daymet v4](https://daymet.ornl.gov/single-pixel/), a 1 km daily grid interpolated from weather
@@ -152,10 +153,14 @@ threshold. Serve it over HTTP (`python -m http.server` in that folder), because 
     point gets that day's rise from average to peak in the NASA POWER cell.
 - **Cloud cover (counties and cities):** NASA POWER `CLOUD_AMT_DAY`, CERES SYN1deg cloud amount during daylight
   (1°). In polar night there is no daytime value, and those days count only when cloud is set to Any.
-- **World cities:** [NASA POWER](https://power.larc.nasa.gov/docs/services/api/) for everything. Daily high, max dew
+- **City list:** `data/comfy_cities.csv`, built by `build_cities` from [Natural Earth 10m populated
+  places](https://www.naturalearthdata.com/downloads/10m-cultural-vectors/10m-populated-places/):
+  the 350 largest US cities by `pop_max` (at least each state's largest), and 550 elsewhere: every capital, each
+  country's largest city if over 1M, the original hand-picked list, then the largest of the rest. US cities use
+  Daymet at the city's point exactly as counties do. Add rows (name, country, lat, lon, pop) and re-run.
+- **Cities outside the US:** [NASA POWER](https://power.larc.nasa.gov/docs/services/api/) for everything. Daily high, max dew
   point and total precipitation come from hourly MERRA-2 (`T2M`, `T2MDEW`, `PRECTOTCORR`) in local standard time,
   and snow from daily `PRECSNOLAND`. Rain is total minus snow. The MERRA-2 cell is 0.5° × 0.625° (about 55 × 50 km).
-  The city list is `data/comfy_cities.csv`; add rows and re-run.
 - **Interactive page:** the page stores a histogram of days for each county and each city month, binned by high
   (5°F), dew point (5°F), cloud (10%), rain (0.01 / 0.04 / 0.1 / 0.25 in) and snowfall (0.1 / 1 / 3 / 6 in). It
   recounts every county and city in the browser, so the sliders move in those steps. `test_comfy_weather.py`
@@ -163,3 +168,27 @@ threshold. Serve it over HTTP (`python -m http.server` in that folder), because 
 - **Caveats:** cities on a 55 km cell blur coastal and mountain gradients. High-altitude cities (Quito, Bogotá,
   Mexico City) sit in cells whose average ground is lower than the city, so they read too warm. Reanalysis drizzles
   more often than real weather, so a very low rain limit removes more days than a rain gauge would.
+
+### World grid
+
+```
+python comfy_world.py   # first run ~1-2 hours of NASA POWER requests; later runs about a minute
+```
+
+Writes `output/comfy/web/world.json` (cell centres, Natural Earth 50m country outlines pre-projected to a
+1440 × 576 plate carrée canvas, x = (lon + 180) × 4, y = (84 − lat) × 4) and `world_hist.txt` (one histogram per
+cell, same format as `hist.txt`), plus `output/comfy/world.png` and `world.csv` at the default thresholds.
+
+- **Grid:** 2° cells from 60°S to 84°N, kept when at least 5% of the cell is land in
+  [Natural Earth 50m countries](https://www.naturalearthdata.com/downloads/50m-cultural-vectors/) (4,681 cells).
+  2° keeps `world_hist.txt` near 6 MB; 1.5° would be ~8,000 cells and ~15 MB.
+- **Data:** NASA POWER point requests at one MERRA-2 cell (0.5° × 0.625°) per grid cell: the one with the most
+  land, nearest the centre on ties. So each cell is a sample, not an average of the 2° box: a 2° box on a coast or
+  mountain range can hold very different climates. Daily `T2M_MAX`, `T2MDEW`, `CLOUD_AMT_DAY`, `PRECTOTCORR` and
+  `PRECSNOLAND` (`PRECSNO` where that is undefined, over Greenland's ice and the Great Lakes), the same day
+  definitions as the cities. POWER's regional endpoint was tried first, but it allows one parameter, one year and
+  a 10° box per request, about 20,000 requests for the globe, versus ~9,400 point requests.
+- **Dew point:** POWER has no daily maximum dew point, so each day's mean `T2MDEW` gets that day's rise from mean
+  to peak from hourly `T2MDEW` (local solar time) at the same cell, which makes it the hourly maximum.
+  Cells `comfy_weather.py` already fetched (cities, counties) are reused from `data/raw/comfy/power/`.
+- **Caveats:** all the city caveats apply, at a coarser scale. Downloads are cached in `data/raw/comfy/world/`.

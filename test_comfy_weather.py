@@ -43,8 +43,26 @@ def test_dew():
     assert abs(c.dew_c(611.2)) < 1e-9 and abs(c.dew_c(2339) - 20) < 0.2  # 2339 Pa saturates at 20 °C
 
 
+def test_world():
+    """Plate carree corners land on the canvas corners, and world_hist.txt decodes back to each cell's packed hist."""
+    import base64, gzip
+    from shapely.affinity import affine_transform
+    from shapely.geometry import Point
+    import comfy_world as w
+    assert affine_transform(Point(-180, 84), w.XY).coords[0] == (0, 0)
+    assert affine_transform(Point(180, -60), w.XY).coords[0] == (1440, 576)
+    rng = np.random.default_rng(2)
+    hs = [c.hist(days(tmax=rng.integers(0, 100, n).astype(float), dmax=rng.integers(0, 70, n).astype(float),
+                      cloud=rng.integers(0, 101, n).astype(float), rain=np.zeros(n), snow=np.zeros(n)))
+          for n in (50, 400)]
+    text, sizes = w.encode(hs)
+    e = np.frombuffer(gzip.decompress(base64.b64decode(text)), "<u4")
+    assert (e[:sizes[0]] == c.pack(hs[0])).all() and (e[sizes[0]:] == c.pack(hs[1])).all() and len(e) == sum(sizes)
+
+
 if __name__ == "__main__":
     test_comfy()
     test_hist_roundtrip()
     test_dew()
+    test_world()
     print("ok")

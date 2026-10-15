@@ -1,4 +1,5 @@
 <meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Comfortable Days Finder</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
@@ -53,13 +54,29 @@ button:focus-visible, input:focus-visible { outline: 2px solid var(--accent); ou
 
 .usa { display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: 22px; align-items: start; }
 .mapbox { background: var(--panel); border: 1px solid var(--rule); border-radius: 10px; padding: 12px; position: relative; }
-#map { width: 100%; height: auto; display: block; }
-#map path { stroke: var(--stroke); stroke-width: .25; }
-#map path:hover { stroke: var(--ink); stroke-width: 1.2; }
+.mapbox svg { width: 100%; height: auto; display: block; touch-action: pan-y; cursor: grab; user-select: none; -webkit-user-select: none; }
+.mapbox svg.drag { cursor: grabbing; }
+#map .zg path { stroke: var(--stroke); stroke-width: .25; vector-effect: non-scaling-stroke; }
+#map .zg path:hover { stroke: var(--ink); stroke-width: 1.2; }
+#wmap .land { fill: var(--rule); }
+#wmap .coast { fill: none; stroke: var(--stroke); stroke-width: .6; vector-effect: non-scaling-stroke; pointer-events: none; }
+#wmap image { image-rendering: pixelated; image-rendering: crisp-edges; }
+.pins circle { fill: var(--ink); stroke: var(--panel); stroke-width: 1.5; cursor: pointer; }
+.pins circle:hover, .pins circle:focus { fill: var(--accent); outline: none; }
+.pins text { font: 500 11px var(--body); fill: var(--ink); paint-order: stroke; stroke: var(--panel); stroke-width: 3px; stroke-linejoin: round; pointer-events: none; }
+.pins tspan { font-family: var(--mono); fill: var(--muted); }
+.zoom { position: absolute; top: 20px; right: 20px; display: grid; gap: 4px; }
+.zoom button { width: 28px; height: 28px; padding: 0; font: 600 16px/1 var(--body); color: var(--ink); background: var(--panel); border: 1px solid var(--rule); border-radius: 6px; cursor: pointer; }
+.zoom button:hover { border-color: var(--accent); }
 .legend { display: flex; align-items: center; gap: 10px; font: 12px var(--mono); color: var(--muted); padding: 6px 4px 0; flex-wrap: wrap; }
 .legend .bar { flex: 0 1 260px; height: 10px; border-radius: 2px; }
 .tip { position: absolute; pointer-events: none; background: var(--ink); color: var(--ground); font-size: 13px; padding: 6px 9px; border-radius: 6px; white-space: nowrap; transform: translate(-50%, calc(-100% - 10px)); }
 .tip b { font-family: var(--mono); }
+.tip .cn { font-weight: 600; } .tip .cn span { font-weight: 400; opacity: .7; margin-left: 4px; }
+.tip .mo, .tip .ml { display: grid; grid-template-columns: repeat(12, 10px); gap: 2px; }
+.tip .mo { height: 34px; align-items: end; margin-top: 6px; }
+.tip .mo i { display: block; background: var(--r3); border-radius: 1px 1px 0 0; min-height: 1px; }
+.tip .ml { font: 9px/1.4 var(--mono); opacity: .7; text-align: center; }
 
 .best { display: grid; gap: 12px; }
 .hero { background: var(--panel); border: 1px solid var(--rule); border-radius: 10px; padding: 16px 18px; }
@@ -71,8 +88,8 @@ ol.rank li { display: grid; grid-template-columns: 22px 1fr auto; gap: 8px; padd
 ol.rank li span:first-child { color: var(--faint); font: 12px/1.9 var(--mono); }
 ol.rank li span:last-child { font-family: var(--mono); font-variant-numeric: tabular-nums; }
 
-.cities { display: grid; gap: 10px; }
-.cities .head { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+.cities, .world { display: grid; gap: 10px; }
+.head { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; flex-wrap: wrap; }
 .filter { font: 14px var(--body); padding: 6px 10px; border: 1px solid var(--rule); border-radius: 6px; background: var(--panel); color: var(--ink); width: 220px; max-width: 100%; }
 .tablebox { overflow-x: auto; background: var(--panel); border: 1px solid var(--rule); border-radius: 10px; }
 table { border-collapse: collapse; width: 100%; min-width: 760px; font-size: 14px; }
@@ -90,6 +107,7 @@ tr:hover td.l { color: var(--accent); }
 .notes { color: var(--muted); font-size: 13px; max-width: 80ch; display: grid; gap: 6px; }
 .notes p { margin: 0; }
 @media (max-width: 900px) { .usa { grid-template-columns: 1fr; } }
+@media (max-width: 600px) { .wrap { padding-inline: 16px; } }
 </style>
 
 <div class="wrap">
@@ -145,7 +163,8 @@ tr:hover td.l { color: var(--accent); }
 
   <section class="usa">
     <div class="mapbox">
-      <svg id="map" role="img" aria-label="Map of US counties shaded by comfortable days per year"></svg>
+      <svg id="map" role="img" aria-label="Map of US counties shaded by comfortable days per year"><g class="zg"></g><g class="pins"></g></svg>
+      <div class="zoom" role="group" aria-label="Zoom"><button type="button" data-z="2" aria-label="Zoom in">+</button><button type="button" data-z="0.5" aria-label="Zoom out">&minus;</button><button type="button" data-z="0" aria-label="Reset zoom">&#8634;</button></div>
       <div class="legend" id="legend"></div>
       <div class="tip" id="tip" hidden></div>
     </div>
@@ -160,6 +179,16 @@ tr:hover td.l { color: var(--accent); }
         <ol class="rank" id="rank"></ol>
       </div>
     </aside>
+  </section>
+
+  <section class="world" id="world" hidden>
+    <div class="head"><h2>The world, on a <span id="wstep"></span>° grid</h2></div>
+    <div class="mapbox">
+      <svg id="wmap" role="img" aria-label="World map shaded by comfortable days per year"><g class="zg"><path class="land"></path><image preserveAspectRatio="none"></image><path class="coast"></path></g><g class="pins"></g></svg>
+      <div class="zoom" role="group" aria-label="Zoom"><button type="button" data-z="2" aria-label="Zoom in">+</button><button type="button" data-z="0.5" aria-label="Zoom out">&minus;</button><button type="button" data-z="0" aria-label="Reset zoom">&#8634;</button></div>
+      <div class="legend" id="wlegend"></div>
+      <div class="tip" id="wtip" hidden></div>
+    </div>
   </section>
 
   <section class="cities">
@@ -182,55 +211,49 @@ tr:hover td.l { color: var(--accent); }
 const $ = id => document.getElementById(id);
 const state = { tlo: 25, thi: 85, dlo: 25, dew: 60, cld: 70, rain: 2, snow: 5 };
 const FIELDS = ["tlo", "thi", "dlo", "dew", "cld", "rain", "snow"];
-let D, B, NR, NS, counties, cities, ramp;
+const NSVG = "http://www.w3.org/2000/svg", MONTHS = "JFMAMJJASOND";
+const esc = s => String(s).replace(/[&<>"]/g, ch => `&#${ch.charCodeAt(0)};`);
+let D, W, B, NR, NS, OK, years, counties, cities, cells, ramp, US, WM, world;
 
-// Each uint32 holds the step from the previous bin index (high 20 bits) and that bin's day count (low 12).
-function decode(u) {
-  const n = u.length, t = new Uint8Array(n), d = new Uint8Array(n), c = new Uint8Array(n),
-    r = new Uint8Array(n), s = new Uint8Array(n), k = new Uint16Array(n);
-  let idx = 0;
-  for (let i = 0; i < n; i++) {
-    idx += u[i] >>> 12; k[i] = u[i] & 4095;
-    let j = idx;
-    s[i] = j % NS; j = (j - s[i]) / NS;
-    r[i] = j % NR; j = (j - r[i]) / NR;
-    c[i] = j % B.nc; j = (j - c[i]) / B.nc;
-    d[i] = j % B.nd; t[i] = (j - d[i]) / B.nd;
-  }
-  return { t, d, c, r, s, k };
-}
-
-async function loadHists() {
-  const b64 = await (await fetch("hist.txt")).text(), bin = atob(b64.trim()), gz = new Uint8Array(bin.length);
+// Files hold, per entry, the step from the previous bin index (high 20 bits) and that bin's day count (low 12).
+// Rewritten in place to the absolute bin index, so counting is one table lookup per entry.
+async function loadHists(file, sizes) {
+  const b64 = await (await fetch(file)).text(), bin = atob(b64.trim()), gz = new Uint8Array(bin.length);
   for (let i = 0; i < bin.length; i++) gz[i] = bin.charCodeAt(i);
   const buf = new Uint8Array(await new Response(new Blob([gz]).stream().pipeThrough(new DecompressionStream("gzip"))).arrayBuffer());
   const u = new Uint32Array(buf.buffer, buf.byteOffset, buf.byteLength / 4);
   let off = 0;
-  return D.sizes.map(n => { const h = decode(u.subarray(off, off + n)); off += n; return h; });
+  return sizes.map(n => {
+    const h = u.subarray(off, off += n);
+    for (let i = 0, idx = 0; i < n; i++) { idx += h[i] >>> 12; h[i] = idx << 12 | h[i] & 4095; }
+    return h;
+  });
 }
 
-function limits() {
-  return {
-    t0: (state.tlo - B.t0) / B.ts, t1: (state.thi - B.t0) / B.ts,
-    d0: state.dlo <= -10 ? 0 : (state.dlo - B.d0) / B.ds,
-    d1: state.dew >= 85 ? B.nd : (state.dew - B.d0) / B.ds,
-    c1: state.cld >= 110 ? B.nc : state.cld / B.cs,
-    r1: state.rain, s1: state.snow,
-  };
+// OK[bin index] = 1 when that bin (t, d, c, r, s; s varies fastest) meets the sliders.
+function table() {
+  const t0 = (state.tlo - B.t0) / B.ts, t1 = (state.thi - B.t0) / B.ts,
+    d0 = state.dlo <= -10 ? 0 : (state.dlo - B.d0) / B.ds, d1 = state.dew >= 85 ? B.nd : (state.dew - B.d0) / B.ds,
+    c1 = state.cld >= 110 ? B.nc : state.cld / B.cs, ok = new Uint8Array(B.nt * B.nd * B.nc * NR * NS);
+  let i = 0;
+  for (let t = 0; t < B.nt; t++) for (let d = 0; d < B.nd; d++) for (let c = 0; c < B.nc; c++)
+    for (let r = 0; r < NR; r++) for (let s = 0; s < NS; s++)
+      ok[i++] = t >= t0 && t < t1 && d >= d0 && d < d1 && c < c1 && r < state.rain && s < state.snow;
+  return ok;
 }
 
-function count(h, L) {
+function count(h) {
   let n = 0;
-  for (let i = 0; i < h.k.length; i++)
-    if (h.t[i] >= L.t0 && h.t[i] < L.t1 && h.d[i] >= L.d0 && h.d[i] < L.d1 && h.c[i] < L.c1 && h.r[i] < L.r1 && h.s[i] < L.s1) n += h.k[i];
+  for (let i = 0; i < h.length; i++) { const v = h[i]; n += OK[v >>> 12] * (v & 4095); }  // branchless: 2x faster
   return n;
 }
 
-function colorFor(v, max) {
+function rgbFor(v, max) {
   const x = Math.min(1, v / max) * (ramp.length - 1), i = Math.floor(x), f = x - i;
   const a = ramp[i], b = ramp[Math.min(i + 1, ramp.length - 1)];
-  return `rgb(${a.map((c, j) => Math.round(c + (b[j] - c) * f)).join(",")})`;
+  return a.map((c, j) => Math.round(c + (b[j] - c) * f));
 }
+const colorFor = (v, max) => `rgb(${rgbFor(v, max).join(",")})`;
 
 function readRamp() {
   const cs = getComputedStyle(document.documentElement);
@@ -254,6 +277,10 @@ function criteriaText() {
   return `Average days per year, ${D.years[0]}–${D.years[1]}, with a high of <b>${state.tlo}–${state.thi}°F</b>, ${dew}, ${cld}, ${rain}, and ${snow}.`;
 }
 
+const niceMax = max => Math.max(10, Math.ceil(max / 10) * 10);
+const legendHTML = m => `<span>0</span><span class="bar" style="background:linear-gradient(90deg,${
+  ramp.map((_, i) => colorFor(i / (ramp.length - 1) * m, m)).join(",")})"></span><span>${m} days / year</span>`;
+
 function update() {
   if (state.thi <= state.tlo) state.thi = state.tlo + 5;
   if (state.dew <= state.dlo) state.dew = state.dlo + 5;
@@ -271,10 +298,10 @@ function update() {
   const key = FIELDS.map(f => state[f]).join(",");
   document.querySelectorAll(".presets button").forEach(b => b.setAttribute("aria-pressed", b.dataset.p === key));
 
-  const L = limits(), years = D.years[1] - D.years[0] + 1;
+  OK = table();
   let max = 1;
-  for (const c of counties) { c.v = count(c.h, L) / years; max = Math.max(max, c.v); }
-  const scaleMax = Math.max(10, Math.ceil(max / 10) * 10);
+  for (const c of counties) { c.v = count(c.h) / years; max = Math.max(max, c.v); }
+  const scaleMax = niceMax(max);
   for (const c of counties) if (c.el) c.el.style.fill = colorFor(c.v, scaleMax);
 
   const ranked = counties.slice().sort((a, b) => b.v - a.v);
@@ -283,14 +310,13 @@ function update() {
     $("bestname").textContent = ranked[0].n;
   }
   $("rank").innerHTML = ranked.slice(0, 15).map((c, i) =>
-    `<li><span>${i + 1}</span><span>${c.n}</span><span>${Math.round(c.v)}</span></li>`).join("");
+    `<li><span>${i + 1}</span><span>${esc(c.n)}</span><span>${Math.round(c.v)}</span></li>`).join("");
+  $("legend").innerHTML = legendHTML(scaleMax);
 
-  const stops = ramp.map((_, i) => colorFor(i / (ramp.length - 1) * scaleMax, scaleMax)).join(",");
-  $("legend").innerHTML = `<span>0</span><span class="bar" style="background:linear-gradient(90deg,${stops})"></span>` +
-    `<span>${scaleMax} days / year</span>`;
-
-  for (const c of cities) { c.mv = c.h.map(h => count(h, L) / years); c.v = c.mv.reduce((a, b) => a + b, 0); }
+  for (const c of cities) { c.mv = c.h.map(h => count(h) / years); c.v = c.mv.reduce((a, b) => a + b, 0); }
   renderCities();
+  drawPins(US);
+  if (world) paintWorld(), drawPins(WM);
 }
 
 function renderCities() {
@@ -302,38 +328,183 @@ function renderCities() {
       const dark = v > 15;
       return `<td class="m" style="background:${colorFor(v, 31)};color:${dark ? "var(--ground)" : "var(--ink)"}" title="${v.toFixed(1)} days">${v >= 0.5 ? Math.round(v) : ""}</td>`;
     }).join("");
-    return `<tr><td class="l">${c.n}<span class="co">${c.c}</span></td>${cells}` +
+    return `<tr><td class="l">${esc(c.n)}<span class="co">${esc(c.c)}</span></td>${cells}` +
       `<td class="tot"><div class="totbar"><i style="width:${c.v / top * 110}px"></i>${Math.round(c.v)}</div></td></tr>`;
   }).join("");
 }
 
-function buildMap() {
-  const svg = $("map"), [w, h] = D.canvas, ns = "http://www.w3.org/2000/svg";
+// Tooltip inside a .mapbox at client point (x, y), kept within the box so it never widens the page.
+function showTip(tip, x, y, html) {
+  const r = tip.parentElement.getBoundingClientRect();
+  tip.innerHTML = html; tip.hidden = false;
+  const hw = tip.offsetWidth / 2;
+  tip.style.left = Math.min(r.width - hw, Math.max(hw, x - r.left)) + "px";
+  tip.style.top = (y - r.top) + "px";
+}
+
+const cityCard = c => `<div class="cn">${esc(c.n)}<span>${esc(c.c)}</span></div><div><b>${Math.round(c.v)}</b> days / year</div>` +
+  `<div class="mo">${c.mv.map(v => `<i style="height:${Math.min(100, v / 31 * 100)}%"></i>`).join("")}</div>` +
+  `<div class="ml">${[...MONTHS].map(m => `<span>${m}</span>`).join("")}</div>`;
+
+// Pan and zoom the svg's .zg group; k in [1, kmax], never dragged past the edges. Wheel / trackpad pinch
+// zooms at the cursor, one pointer pans, two pinch. At k = 1 touch scrolls the page (touch-action pan-y).
+function zoomable(svg, w, h, kmax, onZoom) {
+  const g = svg.querySelector(".zg"), z = { k: 1, x: 0, y: 0 }, pts = new Map();
+  const at = e => { const r = svg.getBoundingClientRect(), s = w / r.width; return [(e.clientX - r.left) * s, (e.clientY - r.top) * s]; };
+  function set(k, x, y) {
+    z.k = k = Math.min(kmax, Math.max(1, k));
+    z.x = Math.min(0, Math.max(w - w * k, x)); z.y = Math.min(0, Math.max(h - h * k, y));
+    g.setAttribute("transform", `translate(${z.x},${z.y}) scale(${k})`);
+    svg.style.touchAction = k > 1 ? "none" : "";
+    onZoom();
+  }
+  const zoomAt = ([px, py], f) => { const k = Math.min(kmax, Math.max(1, z.k * f)); set(k, px - (px - z.x) * k / z.k, py - (py - z.y) * k / z.k); };
+  const gest = () => {
+    const p = [...pts.values()], cx = p.reduce((a, q) => a + q[0], 0) / p.length, cy = p.reduce((a, q) => a + q[1], 0) / p.length;
+    return [cx, cy, p.reduce((a, q) => a + Math.hypot(q[0] - cx, q[1] - cy), 0) / p.length];
+  };
+  svg.addEventListener("wheel", e => {
+    if (z.k === 1 && e.deltaY > 0 && !e.ctrlKey) return;  // fully zoomed out: let the page scroll
+    e.preventDefault();
+    zoomAt(at(e), Math.exp(-e.deltaY * (e.deltaMode ? 0.05 : e.ctrlKey ? 0.01 : 0.002)));
+  }, { passive: false });
+  let travel = 0;
+  svg.addEventListener("pointerdown", e => { pts.set(e.pointerId, at(e)); travel = 0; });
+  svg.addEventListener("pointermove", e => {
+    if (!pts.has(e.pointerId)) return;
+    if (e.pointerType === "mouse" && !e.buttons) { pts.delete(e.pointerId); return; }
+    const [x0, y0, s0] = gest(), p = at(e), q = pts.get(e.pointerId);
+    travel += Math.hypot(p[0] - q[0], p[1] - q[1]);
+    pts.set(e.pointerId, p);
+    if (travel * svg.getBoundingClientRect().width / w < 4 && pts.size < 2) return;  // still a tap
+    if (!svg.classList.contains("drag")) { svg.classList.add("drag"); svg.setPointerCapture(e.pointerId); }
+    const [x1, y1, s1] = gest(), k = Math.min(kmax, Math.max(1, z.k * (s0 && s1 ? s1 / s0 : 1)));
+    set(k, x1 - (x0 - z.x) * k / z.k, y1 - (y0 - z.y) * k / z.k);
+  });
+  const up = e => { pts.delete(e.pointerId); if (!pts.size) setTimeout(() => svg.classList.remove("drag")); };
+  svg.addEventListener("pointerup", up); svg.addEventListener("pointercancel", up);
+  svg.parentElement.querySelectorAll(".zoom button").forEach(b => b.addEventListener("click", () =>
+    +b.dataset.z ? zoomAt([w / 2, h / 2], +b.dataset.z) : set(1, 0, 0)));
+  return z;
+}
+
+// City dots and "Name 123" labels at constant screen size: shown once k >= the city's z, placed greedily in
+// population order, skipped when the label fits neither right nor left of the dot.
+const measure = document.createElement("canvas").getContext("2d");
+function drawPins(m) {
+  const r = m.size;  // from the ResizeObserver, so drawing never forces a layout
+  if (!r?.width || !cities[0]?.mv) return;
+  const s = m.w / r.width, { k, x: tx, y: ty } = m.z, boxes = [[r.width - 40, 0, r.width, 104]];  // zoom buttons
+  measure.font = "500 11px 'IBM Plex Sans', 'Segoe UI', sans-serif";
+  // ponytail: O(n²) overlap scan over placed labels; a grid bucket if thousands ever show at once
+  const free = b => b[0] >= 0 && b[2] <= r.width && b[1] >= 0 && b[3] <= r.height &&
+    !boxes.some(o => b[0] < o[2] && b[2] > o[0] && b[1] < o[3] && b[3] > o[1]);
+  let out = "";
+  for (const p of m.list) {
+    if (k < p.z) continue;
+    const X = (p.x * k + tx) / s, Y = (p.y * k + ty) / s, dot = [X - 4, Y - 4, X + 4, Y + 4];
+    if (!free(dot)) continue;
+    const days = Math.round(p.c.v), lw = measure.measureText(`${p.c.n} ${days}`).width + 4;
+    let b = [X + 5, Y - 8, X + 5 + lw, Y + 8], end = false;
+    if (!free(b)) { b = [X - 5 - lw, Y - 8, X - 5, Y + 8]; end = true; if (!free(b)) continue; }
+    boxes.push(dot, b);
+    out += `<circle cx="${X.toFixed(1)}" cy="${Y.toFixed(1)}" r="3" data-i="${p.i}" tabindex="0" aria-label="${esc(p.c.n)}, ${days} days per year"></circle>` +
+      `<text x="${(end ? X - 6 : X + 6).toFixed(1)}" y="${Y.toFixed(1)}" dy=".35em"${end ? ' text-anchor="end"' : ""}>${esc(p.c.n)} <tspan>${days}</tspan></text>`;
+  }
+  m.pins.setAttribute("transform", `scale(${s})`);
+  m.pins.innerHTML = out;
+}
+
+function mapView(svg, w, h, kmax, list) {
+  const m = { svg, w, list, pins: svg.querySelector(".pins"), tip: svg.parentElement.querySelector(".tip") };
   svg.setAttribute("viewBox", `0 0 ${w} ${h}`);
-  const tip = $("tip"), box = svg.parentElement;
+  m.z = zoomable(svg, w, h, kmax, () => { m.tip.hidden = true; drawPins(m); });
+  const card = e => {
+    if (e.target.tagName !== "circle") return;
+    const b = e.target.getBoundingClientRect();
+    showTip(m.tip, b.left + b.width / 2, b.top, cityCard(cities[e.target.dataset.i]));
+  };
+  m.pins.addEventListener("pointerover", card);
+  m.pins.addEventListener("focusin", card);
+  m.pins.addEventListener("click", card);  // touch: pointerout fires on lift, the click brings the card back
+  m.pins.addEventListener("pointerout", e => { if (e.pointerType === "mouse") m.tip.hidden = true; });
+  m.pins.addEventListener("focusout", () => { m.tip.hidden = true; });
+  svg.addEventListener("click", e => { if (e.target.tagName !== "circle") m.tip.hidden = true; });
+  new ResizeObserver(([e]) => { m.size = e.contentRect; drawPins(m); }).observe(svg);
+  return m;
+}
+
+function buildMap() {
+  const [w, h] = D.canvas, g = $("map").querySelector(".zg");
+  US = mapView($("map"), w, h, 16, cities.map((c, i) => c.xy && { c, i, x: c.xy[0], y: c.xy[1], z: c.z }).filter(Boolean));
   for (const c of counties) {
     if (!c.d) continue;
-    const p = document.createElementNS(ns, "path");
+    const p = document.createElementNS(NSVG, "path");
     p.setAttribute("d", c.d);
     p.addEventListener("pointermove", e => {
-      const r = box.getBoundingClientRect();
-      tip.hidden = false;
-      tip.style.left = (e.clientX - r.left) + "px"; tip.style.top = (e.clientY - r.top) + "px";
-      tip.innerHTML = `${c.n} · <b>${Math.round(c.v)}</b> days`;
+      if (!$("map").classList.contains("drag")) showTip(US.tip, e.clientX, e.clientY, `${esc(c.n)} · <b>${Math.round(c.v)}</b> days`);
     });
-    p.addEventListener("pointerleave", () => { tip.hidden = true; });
-    svg.appendChild(p);
+    p.addEventListener("pointerleave", () => { US.tip.hidden = true; });
+    g.appendChild(p);
     c.el = p;
   }
 }
 
+// World cells sit on a regular grid: one canvas pixel per cell, drawn into the svg as a pixelated image.
+function buildWorld() {
+  const st = W.step, [w, h] = W.canvas, svg = $("wmap");
+  let la0 = 90, la1 = -90, lo0 = 180, lo1 = -180;
+  for (const [la, lo] of W.cells) { la0 = Math.min(la0, la); la1 = Math.max(la1, la); lo0 = Math.min(lo0, lo); lo1 = Math.max(lo1, lo); }
+  const nx = Math.round((lo1 - lo0) / st) + 1, ny = Math.round((la1 - la0) / st) + 1, grid = new Int32Array(nx * ny).fill(-1);
+  W.cells.forEach(([la, lo], i) => { grid[Math.round((la1 - la) / st) * nx + Math.round((lo - lo0) / st)] = i; });
+  const cv = document.createElement("canvas"); cv.width = nx; cv.height = ny;
+  const img = svg.querySelector("image"), x0 = (lo0 - st / 2 + 180) * 4, y0 = (84 - la1 - st / 2) * 4;
+  Object.entries({ x: x0, y: y0, width: nx * st * 4, height: ny * st * 4 }).forEach(([k, v]) => img.setAttribute(k, v));
+  svg.querySelector(".land").setAttribute("d", W.land);
+  svg.querySelector(".coast").setAttribute("d", W.land);
+  $("wstep").textContent = st;
+  world = { grid, cv, ctx: cv.getContext("2d"), data: new ImageData(nx, ny), img, v: new Float32Array(W.cells.length) };
+  WM = mapView(svg, w, h, 24, cities.map((c, i) => ({ c, i, x: (c.lon + 180) * 4, y: (84 - c.lat) * 4, z: c.xy ? Math.max(c.z, 4) : c.z })));
+  const fmt = (v, p, n) => `${Math.abs(v)}°${v >= 0 ? p : n}`;
+  svg.addEventListener("pointermove", e => {
+    if (e.target.tagName === "circle" || svg.classList.contains("drag")) return;
+    const r = svg.getBoundingClientRect(), s = w / r.width, z = WM.z;
+    const cx = ((e.clientX - r.left) * s - z.x) / z.k, cy = ((e.clientY - r.top) * s - z.y) / z.k;
+    const col = Math.floor((cx - x0) / (st * 4)), row = Math.floor((cy - y0) / (st * 4));
+    const i = col >= 0 && col < nx && row >= 0 && row < ny ? grid[row * nx + col] : -1;
+    if (i < 0) { WM.tip.hidden = true; return; }
+    const [la, lo] = W.cells[i];
+    showTip(WM.tip, e.clientX, e.clientY, `${fmt(la, "N", "S")}, ${fmt(lo, "E", "W")} · <b>${Math.round(world.v[i])}</b> days`);
+  });
+  svg.addEventListener("pointerleave", () => { WM.tip.hidden = true; });
+  $("world").hidden = false;
+}
+
+function paintWorld() {
+  const { v, data, grid } = world, px = data.data;
+  let max = 1;
+  for (let i = 0; i < cells.length; i++) { v[i] = count(cells[i]) / years; max = Math.max(max, v[i]); }
+  const m = niceMax(max);
+  for (let j = 0; j < grid.length; j++) {
+    const i = grid[j];
+    if (i < 0) continue;
+    const [r, g, b] = rgbFor(v[i], m);
+    px[4 * j] = r; px[4 * j + 1] = g; px[4 * j + 2] = b; px[4 * j + 3] = 255;
+  }
+  world.ctx.putImageData(data, 0, 0);
+  world.img.setAttribute("href", world.cv.toDataURL());
+  $("wlegend").innerHTML = legendHTML(m);
+}
+
 function bind() {
-  const set = (k, id) => $(id).addEventListener("input", e => { state[k] = +e.target.value; update(); });
+  let raf = 0;  // sliders fire faster than a full recount on slow machines: one update per frame
+  const later = () => { raf ||= requestAnimationFrame(() => { raf = 0; update(); }); };
+  const set = (k, id) => $(id).addEventListener("input", e => { state[k] = +e.target.value; later(); });
   set("cld", "cld"); set("rain", "rain"); set("snow", "snow");
-  $("tlo").addEventListener("input", e => { state.tlo = Math.min(+e.target.value, state.thi - 5); update(); });
-  $("thi").addEventListener("input", e => { state.thi = Math.max(+e.target.value, state.tlo + 5); update(); });
-  $("dlo").addEventListener("input", e => { state.dlo = Math.min(+e.target.value, state.dew - 5); update(); });
-  $("dew").addEventListener("input", e => { state.dew = Math.max(+e.target.value, state.dlo + 5); update(); });
+  $("tlo").addEventListener("input", e => { state.tlo = Math.min(+e.target.value, state.thi - 5); later(); });
+  $("thi").addEventListener("input", e => { state.thi = Math.max(+e.target.value, state.tlo + 5); later(); });
+  $("dlo").addEventListener("input", e => { state.dlo = Math.min(+e.target.value, state.dew - 5); later(); });
+  $("dew").addEventListener("input", e => { state.dew = Math.max(+e.target.value, state.dlo + 5); later(); });
   document.querySelectorAll(".presets button").forEach(b => b.addEventListener("click", () => {
     b.dataset.p.split(",").forEach((v, i) => { state[FIELDS[i]] = +v; });
     update();
@@ -344,26 +515,33 @@ function bind() {
 }
 
 async function start() {
-  let hists;
+  let ch, cityh;
   try {
     D = await (await fetch("data.json")).json();
-    B = D.bins; NR = B.rain.length + 1; NS = B.snow.length + 1;
-    hists = await loadHists();
+    B = D.bins; NR = B.rain.length + 1; NS = B.snow.length + 1; years = D.years[1] - D.years[0] + 1;
+    [ch, cityh] = await Promise.all([loadHists("hist.txt", D.sizes), loadHists("cities_hist.txt", D.city_sizes)]);
   } catch (e) {
     $("lede").textContent = "The weather data did not load. Reload the page to try again.";
     return;
   }
-  counties = D.counties.map((c, i) => ({ ...c, h: hists[i] }));
-  const off = counties.length;
-  cities = D.cities.map((c, i) => ({ n: c.n, c: c.c, h: hists.slice(off + 12 * i, off + 12 * i + 12) }));
+  counties = D.counties.map((c, i) => ({ ...c, h: ch[i] }));
+  cities = D.cities.map((c, i) => ({ ...c, h: cityh.slice(12 * i, 12 * i + 12) }));
   $("notes").innerHTML = `
     <p><b>US counties.</b> <a href="https://daymet.ornl.gov/">Daymet</a> v4, a 1 km daily grid built from weather stations, read at each county's most populated square kilometre (GHS-POP 2015), so the number describes where most people live rather than the mountains. Daymet gives the high, precipitation and the day's average humidity. Snow is split from rain by the day's mean temperature and counted at 10 in of snow per inch of water. Daymet has no daily peak dew point, so each day's average dew point gets that day's rise to its peak from NASA POWER.</p>
     <p><b>Clouds and world cities.</b> <a href="https://power.larc.nasa.gov/">NASA POWER</a>: daytime cloud is CERES satellite cloud amount (1°, about 100 km, smoother than temperature). Cities use POWER for everything: hourly MERRA-2 reanalysis on local time (about 55 × 50 km cells), with rain and snow from its own split.</p>
+    <p><b>World grid.</b> NASA POWER at one 0.5° × 0.625° MERRA-2 cell per 2° land cell (the one with the most land), so each square is a sample of its box, not an average; a coastal or mountain box can hide very different climates. Peak dew point is the day's mean plus its hourly rise to peak at that cell.</p>
     <p><b>Limits.</b> Values are binned to 5°F, 10% cloud and the rain and snow steps shown, so the sliders move in those steps. Cities on a 55 km cell blur coastal and mountain differences; high-altitude cities such as Quito, Bogotá and Mexico City sit in cells lower than the city and read too warm.</p>`;
   readRamp();
   buildMap();
   bind();
   update();
+  // The world grid is the biggest download: the rest of the page works while it loads, or if it fails.
+  try {
+    W = await (await fetch("world.json")).json();
+    cells = await loadHists("world_hist.txt", W.sizes);
+  } catch (e) { return; }
+  buildWorld();
+  paintWorld(); drawPins(WM);
 }
 start();
 </script>
