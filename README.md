@@ -134,9 +134,10 @@ A day counts as comfortable when the **daily high is 25–70°F**, the **daily m
 **daytime cloud cover is under 60%** and **rain is under 0.04 in (1 mm)**. Snow days count by default
 (`SNOW_MAX_IN`). These are the constants at the top of `comfy_weather.py`; edit and re-run, the downloads are
 cached. Results are averaged over 2016–2025 and written to `output/comfy/us_counties.csv` and `cities.csv`, with a
-column per month.
+column per month. `cities.png` shows only the 80 cities with the most comfortable days.
 
-`output/comfy/web/` is an interactive version (`index.html`, `data.json`, `hist.txt`) with sliders for every
+`output/comfy/web/` is an interactive version (`index.html`, `data.json`, `hist.txt` for counties,
+`cities_hist.txt` for cities) with sliders for every
 threshold. Serve it over HTTP (`python -m http.server` in that folder), because it fetches its data files.
 
 - **US counties:** [Daymet v4](https://daymet.ornl.gov/single-pixel/), a 1 km daily grid interpolated from weather
@@ -152,10 +153,14 @@ threshold. Serve it over HTTP (`python -m http.server` in that folder), because 
     point gets that day's rise from average to peak in the NASA POWER cell.
 - **Cloud cover (counties and cities):** NASA POWER `CLOUD_AMT_DAY`, CERES SYN1deg cloud amount during daylight
   (1°). In polar night there is no daytime value, and those days count only when cloud is set to Any.
-- **World cities:** [NASA POWER](https://power.larc.nasa.gov/docs/services/api/) for everything. Daily high, max dew
+- **City list:** `data/comfy_cities.csv`, built by `build_cities` from [Natural Earth 10m populated
+  places](https://www.naturalearthdata.com/downloads/10m-cultural-vectors/10m-populated-places/):
+  the 350 largest US cities by `pop_max` (at least each state's largest), and 550 elsewhere: every capital, each
+  country's largest city if over 1M, the original hand-picked list, then the largest of the rest. US cities use
+  Daymet at the city's point exactly as counties do. Add rows (name, country, lat, lon, pop) and re-run.
+- **Cities outside the US:** [NASA POWER](https://power.larc.nasa.gov/docs/services/api/) for everything. Daily high, max dew
   point and total precipitation come from hourly MERRA-2 (`T2M`, `T2MDEW`, `PRECTOTCORR`) in local standard time,
   and snow from daily `PRECSNOLAND`. Rain is total minus snow. The MERRA-2 cell is 0.5° × 0.625° (about 55 × 50 km).
-  The city list is `data/comfy_cities.csv`; add rows and re-run.
 - **Interactive page:** the page stores a histogram of days for each county and each city month, binned by high
   (5°F), dew point (5°F), cloud (10%), rain (0.01 / 0.04 / 0.1 / 0.25 in) and snowfall (0.1 / 1 / 3 / 6 in). It
   recounts every county and city in the browser, so the sliders move in those steps. `test_comfy_weather.py`
@@ -163,3 +168,53 @@ threshold. Serve it over HTTP (`python -m http.server` in that folder), because 
 - **Caveats:** cities on a 55 km cell blur coastal and mountain gradients. High-altitude cities (Quito, Bogotá,
   Mexico City) sit in cells whose average ground is lower than the city, so they read too warm. Reanalysis drizzles
   more often than real weather, so a very low rain limit removes more days than a rain gauge would.
+
+### World grid
+
+```
+python comfy_world.py   # first run ~2.5 hours of NASA POWER requests plus a 478 MB ETOPO download; later runs about 3 minutes
+```
+
+Writes `output/comfy/web/world.json` and `world_hist_0.txt`, `world_hist_1.txt`, ... (one histogram per cell,
+same packing as `hist.txt`, cells in `world.json` order, split under 15 MB a file), plus `output/comfy/world.png`
+and `world.csv` at the default thresholds. `world.json` holds, on a 1440 × 576 plate carrée canvas
+(x = (lon + 180) × 4, y = (84 − lat) × 4): `cells` (centres on a regular `step`° lattice from −180/−60), `ce`
+(each cell's mean MERRA-2 ground height, m), `n` (native cells summed into it), `files`/`sizes`, `dem`
+(base64 of gzip of int16 little-endian 1440 × 576, row 0 at 84°N, one value per canvas pixel: mean land height in
+m, −32768 for sea), `land` (Natural Earth 50m country outlines), `coast` (dissolved Natural Earth 50m land outline)
+and `lapse` (°F per km to add to the high, `t`, and the peak dew point, `d`).
+
+- **Data:** NASA POWER's [regional daily endpoint](https://power.larc.nasa.gov/docs/services/api/temporal/daily/)
+  for every native MERRA-2 cell (0.5° × 0.625°, ~55 km) with any land from 60°S to 84°N, 2016–2025:
+  `T2M_MAX`, `T2MDEW`, `CLOUD_AMT_DAY` (CERES, 1°), `PRECTOTCORR` and `PRECSNOLAND` (`PRECSNO` where that is
+  undefined, over Greenland's ice and big lakes). The endpoint takes one parameter, at most 366 days and a 10° box
+  per request, so the land is covered by 351 boxes of 20 × 16 cells: 17,550 requests (plus `PRECSNO` boxes), as
+  NetCDF, cached in `data/raw/comfy/world/region/` as float16 land cells only (~2 GB). Each box's ground heights
+  come from one one-day JSON request. POWER drops the first row or column of a box whose minimum latitude or
+  longitude is exactly 0, so those boxes start one cell early.
+- **Averaging:** each 1° cell sums the day histograms of every native cell centred in it that is at least 50% land
+  (Natural Earth 50m countries), so a cell is the whole box's ten years of days, not one sample, and sea-dominated
+  cells do not wet or cool coastal land. A box with no such cell (thin coasts, small islands) takes the landiest
+  native cell centred within half a degree of it. Divide counts by the cell's total days (or `n` × 3,653) for
+  days per year. Counts over the packing's 4,095 are split across repeated entries for the same bin.
+  1° gives 17,354 cells and 36 MB of histograms in four files; 0.5° would be 64,391 cells and ~70 MB (and below the native
+  resolution, each 0.5° box holds zero or one native cell centre), too big for the page.
+- **Peak dew point:** POWER's daily data has only the mean dew point. Each day gets the rise from mean to peak
+  (hourly `T2MDEW`, local solar time) of the nearest of ~10,900 cells with hourly data (the old 2° world samples in
+  `data/raw/comfy/world/dew/` and `comfy_weather.py`'s cells), for the same day: the median distance is one native
+  cell (0.5°), 99% are within 1.3°, and a fifth are the cell itself. The same day is kept rather than a monthly
+  average so that a humid afternoon stays humid; the rise is a diurnal-mixing signal that varies over hundreds of
+  km, so the neighbour's value transfers well.
+- **Elevation:** `dem` is [ETOPO 2022](https://www.ncei.noaa.gov/products/etopo-global-relief-model) 60" surface
+  heights averaged over the land in each 0.25° pixel; a pixel is land when at least half of it is land in Natural
+  Earth 50m countries. The page shifts each pixel's high and dew point from its cell's height `ce` to the
+  pixel's height at the `lapse` rates, which are fitted from the data: each landy native cell's ten-year mean high
+  (and peak dew point) minus its landy neighbours' (5 × 5 cells) regressed on the difference in MERRA-2 ground
+  height. That gives −9.6 °F/km for the high (5.3 °C/km, less than the 6.5 °C/km standard atmosphere, as daily
+  highs on slopes usually are) and −8.0 °F/km for the dew point (4.4 °C/km; steeper than the ~2 °C/km of a rising air parcel because higher ground is also drier ground). `world.png` applies the same shift to
+  the default thresholds, assuming days spread evenly through each 5°F bin.
+- **Caveats:** reanalysis cannot see what is smaller than its ~55 km cells, and interpolating or shifting it by
+  height does not bring that back: coastal fog and marine layers (San Diego's May Gray, Lima's garúa, the Namib),
+  sea breezes, valley inversions and rain shadows narrower than a cell are missing or smeared. The height shift
+  moves temperature and dew point only; cloud, rain and snow stay the cell's. A single lapse rate for every place
+  and season is a simplification: inversions (winter basins) and humid slopes break it. All the city caveats apply.
