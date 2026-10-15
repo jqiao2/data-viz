@@ -60,7 +60,6 @@ button:focus-visible, input:focus-visible { outline: 2px solid var(--accent); ou
 #map .zg path:hover { stroke: var(--ink); stroke-width: 1.2; }
 #wmap .land { fill: var(--rule); }
 #wmap .coast { fill: none; stroke: var(--stroke); stroke-width: .6; vector-effect: non-scaling-stroke; pointer-events: none; }
-#wmap image { image-rendering: pixelated; image-rendering: crisp-edges; }
 .pins circle { fill: var(--ink); stroke: var(--panel); stroke-width: 1.5; cursor: pointer; }
 .pins circle:hover, .pins circle:focus { fill: var(--accent); outline: none; }
 .pins text { font: 500 11px var(--body); fill: var(--ink); paint-order: stroke; stroke: var(--panel); stroke-width: 3px; stroke-linejoin: round; pointer-events: none; }
@@ -182,9 +181,9 @@ tr:hover td.l { color: var(--accent); }
   </section>
 
   <section class="world" id="world" hidden>
-    <div class="head"><h2>The world, on a <span id="wstep"></span>° grid</h2></div>
+    <div class="head"><h2>The world, from a <span id="wstep"></span>° grid adjusted for elevation</h2></div>
     <div class="mapbox">
-      <svg id="wmap" role="img" aria-label="World map shaded by comfortable days per year"><g class="zg"><path class="land"></path><image preserveAspectRatio="none"></image><path class="coast"></path></g><g class="pins"></g></svg>
+      <svg id="wmap" role="img" aria-label="World map shaded by comfortable days per year"><g class="zg"><path class="land"></path><clipPath id="wclip"><path></path></clipPath><image preserveAspectRatio="none" clip-path="url(#wclip)"></image><path class="coast"></path></g><g class="pins"></g></svg>
       <div class="zoom" role="group" aria-label="Zoom"><button type="button" data-z="2" aria-label="Zoom in">+</button><button type="button" data-z="0.5" aria-label="Zoom out">&minus;</button><button type="button" data-z="0" aria-label="Reset zoom">&#8634;</button></div>
       <div class="legend" id="wlegend"></div>
       <div class="tip" id="wtip" hidden></div>
@@ -215,14 +214,21 @@ const NSVG = "http://www.w3.org/2000/svg", MONTHS = "JFMAMJJASOND";
 const esc = s => String(s).replace(/[&<>"]/g, ch => `&#${ch.charCodeAt(0)};`);
 let D, W, B, NR, NS, OK, years, counties, cities, cells, ramp, US, WM, world;
 
-// Files hold, per entry, the step from the previous bin index (high 20 bits) and that bin's day count (low 12).
-// Rewritten in place to the absolute bin index, so counting is one table lookup per entry.
-async function loadHists(file, sizes) {
-  const b64 = await (await fetch(file)).text(), bin = atob(b64.trim()), gz = new Uint8Array(bin.length);
+async function gunzip64(b64) {
+  const bin = atob(b64.trim()), gz = new Uint8Array(bin.length);
   for (let i = 0; i < bin.length; i++) gz[i] = bin.charCodeAt(i);
-  const buf = new Uint8Array(await new Response(new Blob([gz]).stream().pipeThrough(new DecompressionStream("gzip"))).arrayBuffer());
-  const u = new Uint32Array(buf.buffer, buf.byteOffset, buf.byteLength / 4);
+  return new Uint8Array(await new Response(new Blob([gz]).stream().pipeThrough(new DecompressionStream("gzip"))).arrayBuffer());
+}
+
+// Files hold, per entry, the step from the previous bin index (high 20 bits) and that bin's day count (low 12).
+// Rewritten in place to the absolute bin index, so counting is one table lookup per entry. Several files are one
+// stream split for download: fetched in parallel, inflated one at a time into one buffer (peak = buffer + one file).
+async function loadHists(files, sizes) {
+  const texts = files.map(f => fetch(f).then(r => r.text()));
+  const u = new Uint32Array(sizes.reduce((a, b) => a + b, 0)), u8 = new Uint8Array(u.buffer);
   let off = 0;
+  for (const t of texts) { const b = await gunzip64(await t); u8.set(b, off); off += b.length; }
+  off = 0;
   return sizes.map(n => {
     const h = u.subarray(off, off += n);
     for (let i = 0, idx = 0; i < n; i++) { idx += h[i] >>> 12; h[i] = idx << 12 | h[i] & 4095; }
@@ -230,15 +236,15 @@ async function loadHists(file, sizes) {
   });
 }
 
-// OK[bin index] = 1 when that bin (t, d, c, r, s; s varies fastest) meets the sliders.
-function table() {
+// OK[bin index] = 1 when that bin (t, d, c, r, s; s varies fastest) meets the sliders (only c, r, s when crs).
+function table(crs) {
   const t0 = (state.tlo - B.t0) / B.ts, t1 = (state.thi - B.t0) / B.ts,
     d0 = state.dlo <= -10 ? 0 : (state.dlo - B.d0) / B.ds, d1 = state.dew >= 85 ? B.nd : (state.dew - B.d0) / B.ds,
     c1 = state.cld >= 110 ? B.nc : state.cld / B.cs, ok = new Uint8Array(B.nt * B.nd * B.nc * NR * NS);
   let i = 0;
   for (let t = 0; t < B.nt; t++) for (let d = 0; d < B.nd; d++) for (let c = 0; c < B.nc; c++)
     for (let r = 0; r < NR; r++) for (let s = 0; s < NS; s++)
-      ok[i++] = t >= t0 && t < t1 && d >= d0 && d < d1 && c < c1 && r < state.rain && s < state.snow;
+      ok[i++] = (crs || t >= t0 && t < t1 && d >= d0 && d < d1) && c < c1 && r < state.rain && s < state.snow;
   return ok;
 }
 
@@ -316,7 +322,7 @@ function update() {
   for (const c of cities) { c.mv = c.h.map(h => count(h) / years); c.v = c.mv.reduce((a, b) => a + b, 0); }
   renderCities();
   drawPins(US);
-  if (world) paintWorld(), drawPins(WM);
+  if (world) { drawPins(WM); world.raf ||= requestAnimationFrame(() => { world.raf = 0; paintWorld(); }); }  // after the rest has painted
 }
 
 function renderCities() {
@@ -450,49 +456,131 @@ function buildMap() {
   }
 }
 
-// World cells sit on a regular grid: one canvas pixel per cell, drawn into the svg as a pixelated image.
-function buildWorld() {
-  const st = W.step, [w, h] = W.canvas, svg = $("wmap");
-  let la0 = 90, la1 = -90, lo0 = 180, lo1 = -180;
-  for (const [la, lo] of W.cells) { la0 = Math.min(la0, la); la1 = Math.max(la1, la); lo0 = Math.min(lo0, lo); lo1 = Math.max(lo1, lo); }
-  const nx = Math.round((lo1 - lo0) / st) + 1, ny = Math.round((la1 - la0) / st) + 1, grid = new Int32Array(nx * ny).fill(-1);
+// World: per cell, the days passing cloud, rain and snow, binned by (high, dew) as a 2D prefix table S, so any
+// high × dew range is a few lookups. Each land pixel of the 0.25° elevation grid blends its 4 surrounding cell
+// centres bilinearly, reading each cell at limits shifted by the lapse rate for the pixel's height above it.
+function buildWorld(dem) {
+  const st = W.step, [w, h] = W.canvas, svg = $("wmap"), nt = B.nt, nd = B.nd, R = nd + 1, STR = (nt + 1) * R;
+  let la1 = -90, lo0 = 180;
+  for (const [la, lo] of W.cells) { la1 = Math.max(la1, la); lo0 = Math.min(lo0, lo); }
+  const nx = Math.round(360 / st), ny = Math.round((la1 + 90) / st) + 1, grid = new Int32Array(nx * ny).fill(-1);
   W.cells.forEach(([la, lo], i) => { grid[Math.round((la1 - la) / st) * nx + Math.round((lo - lo0) / st)] = i; });
-  const cv = document.createElement("canvas"); cv.width = nx; cv.height = ny;
-  const img = svg.querySelector("image"), x0 = (lo0 - st / 2 + 180) * 4, y0 = (84 - la1 - st / 2) * 4;
-  Object.entries({ x: x0, y: y0, width: nx * st * 4, height: ny * st * 4 }).forEach(([k, v]) => img.setAttribute(k, v));
+  const cell = (r, c) => r >= 0 && r < ny ? grid[r * nx + (c % nx + nx) % nx] : -1;  // wraps at the date line
+  // Land pixels, plus sea pixels touching land (given that land's height) so the image, clipped to the
+  // coastline path, has no smoothed stair-step at the coast.
+  const O = -32768, zAt = p => dem[p] !== O ? dem[p] : [p - 1, p + 1, p - w, p + w].map(q => dem[q] ?? O).find(z => z !== O);
+  let nl = 0;
+  for (let p = 0; p < dem.length; p++) nl += zAt(p) !== undefined;
+  // Per land pixel: up to 4 neighbours as prefix-table offsets, weights, and height above the cell in km.
+  const px = new Int32Array(nl), nb = new Int32Array(4 * nl), wt = new Float32Array(4 * nl), dz = new Float32Array(4 * nl);
+  let np = 0;
+  for (let p = 0; p < dem.length; p++) {
+    const z = zAt(p);
+    if (z === undefined) continue;
+    const gy = (la1 - 84 + (Math.floor(p / w) + .5) / 4) / st, gx = ((p % w + .5) / 4 - 180 - lo0) / st;
+    const r = Math.floor(gy), c = Math.floor(gx), fy = gy - r, fx = gx - c, k = 4 * np;
+    let sum = 0, n = 0;
+    for (const [rr, cc, f] of [[r, c, (1 - fx) * (1 - fy)], [r, c + 1, fx * (1 - fy)], [r + 1, c, (1 - fx) * fy], [r + 1, c + 1, fx * fy]]) {
+      const i = cell(rr, cc);
+      if (i < 0 || !f) continue;
+      nb[k + n] = i * STR; wt[k + n] = f; dz[k + n++] = (z - W.ce[i]) / 1000; sum += f;
+    }
+    // A cell sums the days of W.n native cells, so its weight also divides by that count.
+    if (sum) for (let j = k; j < k + n; j++) wt[j] /= sum * (W.n ? W.n[nb[j] / STR] : 1);
+    else {  // no surrounding cell: the nearest within 2 steps
+      let best = 4.01, bi = -1;
+      for (let rr = r - 1; rr <= r + 2; rr++) for (let cc = c - 1; cc <= c + 2; cc++) {
+        const i = cell(rr, cc), d2 = (rr - gy) ** 2 + (cc - gx) ** 2;
+        if (i >= 0 && d2 < best) { best = d2; bi = i; }
+      }
+      if (bi < 0) continue;
+      nb[k] = bi * STR; wt[k] = 1 / (W.n ? W.n[bi] : 1); dz[k] = (z - W.ce[bi]) / 1000;
+    }
+    px[np++] = p;
+  }
+  // World entries repacked once as (t, d) slot in S << 21 | (c, r, s) index << 12 | days: the rebuild then needs
+  // no bin table, and runs twice as fast.
+  const M = B.nc * NR * NS;
+  console.assert(STR <= 2048 && M <= 512, "world entry packing");
+  for (const h of cells) for (let k = 0; k < h.length; k++) {
+    const v = h[k], b = v >>> 12;
+    h[k] = (((b / (nd * M) | 0) + 1) * R + (b / M | 0) % nd + 1) << 21 | b % M << 12 | v & 4095;
+  }
+  // Prefix value at fractional (x, y): days spread evenly within a bin, so a limit slides smoothly through it.
+  const F = (S, o, x, y) => {
+    const i = x < nt ? x | 0 : nt - 1, j = y < nd ? y | 0 : nd - 1, fx = x - i, fy = y - j, q = o + i * R + j;
+    return (S[q] * (1 - fx) + S[q + R] * fx) * (1 - fy) + (S[q + 1] * (1 - fx) + S[q + R + 1] * fx) * fy;
+  };
+  const cl = (v, n) => v < 0 ? 0 : v > n ? n : v;
+  // Days at a pixel z km above cell o: the pixel is cooler by -lapse·z, so it passes on the cell's days whose
+  // high is in [tlo - lapse·z, thi - lapse·z]; L holds the limits in bins and the shift in bins per km.
+  const days = (S, o, z, L) => {
+    const x0 = cl(L.t0 + L.lt * z, nt), x1 = cl(L.t1 + L.lt * z, nt), y0 = cl(L.d0 + L.ld * z, nd), y1 = cl(L.d1 + L.ld * z, nd);
+    return F(S, o, x1, y1) - F(S, o, x0, y1) - F(S, o, x1, y0) + F(S, o, x0, y0);
+  };
+  { // self-check: 100 days at a cell high in [70, 75)°F; 1 km up the pixel's highs are [70, 75) + lapse.t
+    const S = new Float32Array(STR), tb = (70 - B.t0) / B.ts;
+    for (let t = tb + 1; t <= nt; t++) for (let d = 1; d <= nd; d++) S[t * R + d] = 100;
+    const L = { t0: tb + W.lapse.t / B.ts, t1: tb + 1 + W.lapse.t / B.ts, d0: -1e9, d1: 1e9, lt: -W.lapse.t / B.ts, ld: 0 };
+    console.assert(Math.abs(days(S, 0, 1, L) - 100) < 1e-3 && (!W.lapse.t || days(S, 0, 0, L) < 100), "lapse sign");
+  }
+  const img = svg.querySelector("image");
+  Object.entries({ x: 0, y: 0, width: w, height: h }).forEach(([k, v]) => img.setAttribute(k, v));
   svg.querySelector(".land").setAttribute("d", W.land);
   svg.querySelector(".coast").setAttribute("d", W.land);
+  svg.querySelector("clipPath path").setAttribute("d", W.coast || W.land);  // coast: land dissolved, no slivers between borders
   $("wstep").textContent = st;
-  world = { grid, cv, ctx: cv.getContext("2d"), data: new ImageData(nx, ny), img, v: new Float32Array(W.cells.length) };
+  $("wnote").textContent = `Each 0.25° pixel blends its four nearest ${st}° cells and shifts the high by ${-W.lapse.t}°F and the dew point by ${-W.lapse.d}°F for each km it sits above the cell's model ground, so a valley and the peaks above it part ways within one cell.`;
+  const cv = document.createElement("canvas"); cv.width = w; cv.height = h;
+  const data = new ImageData(w, h);
+  world = { S: new (years * 366 < 65536 ? Uint16Array : Uint32Array)(cells.length * STR), px, nb, wt, dz, np, days, img, cv,
+    ctx: cv.getContext("2d"), data, u32: new Uint32Array(data.data.buffer), pv: new Float32Array(w * h).fill(NaN), seq: 0 };
   WM = mapView(svg, w, h, 24, cities.map((c, i) => ({ c, i, x: (c.lon + 180) * 4, y: (84 - c.lat) * 4, z: c.xy ? Math.max(c.z, 4) : c.z })));
-  const fmt = (v, p, n) => `${Math.abs(v)}°${v >= 0 ? p : n}`;
+  const fmt = (v, p, n) => `${Math.abs(v).toFixed(1)}°${v >= 0 ? p : n}`;
   svg.addEventListener("pointermove", e => {
     if (e.target.tagName === "circle" || svg.classList.contains("drag")) return;
     const r = svg.getBoundingClientRect(), s = w / r.width, z = WM.z;
-    const cx = ((e.clientX - r.left) * s - z.x) / z.k, cy = ((e.clientY - r.top) * s - z.y) / z.k;
-    const col = Math.floor((cx - x0) / (st * 4)), row = Math.floor((cy - y0) / (st * 4));
-    const i = col >= 0 && col < nx && row >= 0 && row < ny ? grid[row * nx + col] : -1;
-    if (i < 0) { WM.tip.hidden = true; return; }
-    const [la, lo] = W.cells[i];
-    showTip(WM.tip, e.clientX, e.clientY, `${fmt(la, "N", "S")}, ${fmt(lo, "E", "W")} · <b>${Math.round(world.v[i])}</b> days`);
+    const j = Math.floor(((e.clientX - r.left) * s - z.x) / z.k), i = Math.floor(((e.clientY - r.top) * s - z.y) / z.k), p = i * w + j;
+    if (j < 0 || j >= w || i < 0 || i >= h || dem[p] === O || isNaN(world.pv[p])) { WM.tip.hidden = true; return; }
+    showTip(WM.tip, e.clientX, e.clientY, `${fmt(84 - (i + .5) / 4, "N", "S")}, ${fmt((j + .5) / 4 - 180, "E", "W")} · ${dem[p].toLocaleString()} m · <b>${Math.round(world.pv[p])}</b> days`);
   });
   svg.addEventListener("pointerleave", () => { WM.tip.hidden = true; });
   $("world").hidden = false;
 }
 
-function paintWorld() {
-  const { v, data, grid } = world, px = data.data;
-  let max = 1;
-  for (let i = 0; i < cells.length; i++) { v[i] = count(cells[i]) / years; max = Math.max(max, v[i]); }
-  const m = niceMax(max);
-  for (let j = 0; j < grid.length; j++) {
-    const i = grid[j];
-    if (i < 0) continue;
-    const [r, g, b] = rgbFor(v[i], m);
-    px[4 * j] = r; px[4 * j + 1] = g; px[4 * j + 2] = b; px[4 * j + 3] = 255;
+// Rebuilt only when cloud, rain or snow change: one pass over every cell's histogram, then the 2D prefix sum.
+function prefix() {
+  const ok = table(true), { S } = world, R = B.nd + 1, STR = (B.nt + 1) * R, a = new Int32Array(STR);  // a: one cell, stays in L1
+  for (let i = 0; i < cells.length; i++) {
+    const h = cells[i];
+    a.fill(0);
+    for (let k = 0; k < h.length; k++) { const v = h[k]; a[v >>> 21] += ok[v >>> 12 & 511] * (v & 4095); }  // ok[crs] = ok[t=0, d=0, crs]
+    for (let q = R; q < STR; q += R) for (let d = 1, s = 0; d < R; d++) { s += a[q + d]; a[q + d] = s + a[q + d - R]; }
+    S.set(a, i * STR);
   }
-  world.ctx.putImageData(data, 0, 0);
-  world.img.setAttribute("href", world.cv.toDataURL());
+}
+
+function paintWorld() {
+  const { S, px, nb, wt, dz, np, days, pv, u32 } = world, key = [state.cld, state.rain, state.snow].join();
+  if (world.key !== key) { prefix(); world.key = key; }
+  const L = { t0: (state.tlo - B.t0) / B.ts, t1: (state.thi - B.t0) / B.ts, lt: -W.lapse.t / B.ts, ld: -W.lapse.d / B.ds,
+    d0: state.dlo <= -10 ? -1e9 : (state.dlo - B.d0) / B.ds, d1: state.dew >= 85 ? 1e9 : (state.dew - B.d0) / B.ds };
+  let max = 1;
+  for (let s = 0, k = 0; s < np; s++) {
+    let v = 0;
+    for (const e = k + 4; k < e; k++) if (wt[k]) v += wt[k] * days(S, nb[k], dz[k], L);
+    max = Math.max(max, pv[px[s]] = v / years);
+  }
+  const m = niceMax(max), lut = new Uint32Array(256);
+  for (let q = 0; q < 256; q++) { const [r, g, b] = rgbFor(q / 255 * m, m); lut[q] = (255 << 24 | b << 16 | g << 8 | r) >>> 0; }  // little-endian RGBA
+  for (let s = 0; s < np; s++) { const p = px[s]; u32[p] = lut[Math.min(255, Math.round(pv[p] / m * 255))]; }
+  world.ctx.putImageData(world.data, 0, 0);
+  const seq = ++world.seq;
+  world.cv.toBlob(b => {  // encoded off the main thread; a newer paint wins
+    if (seq !== world.seq) return;
+    URL.revokeObjectURL(world.img.getAttribute("href"));
+    world.img.setAttribute("href", URL.createObjectURL(b));
+  });
   $("wlegend").innerHTML = legendHTML(m);
 }
 
@@ -515,11 +603,11 @@ function bind() {
 }
 
 async function start() {
-  let ch, cityh;
+  let ch, cityh, dem;
   try {
     D = await (await fetch("data.json")).json();
     B = D.bins; NR = B.rain.length + 1; NS = B.snow.length + 1; years = D.years[1] - D.years[0] + 1;
-    [ch, cityh] = await Promise.all([loadHists("hist.txt", D.sizes), loadHists("cities_hist.txt", D.city_sizes)]);
+    [ch, cityh] = await Promise.all([loadHists(["hist.txt"], D.sizes), loadHists(["cities_hist.txt"], D.city_sizes)]);
   } catch (e) {
     $("lede").textContent = "The weather data did not load. Reload the page to try again.";
     return;
@@ -529,7 +617,7 @@ async function start() {
   $("notes").innerHTML = `
     <p><b>US counties.</b> <a href="https://daymet.ornl.gov/">Daymet</a> v4, a 1 km daily grid built from weather stations, read at each county's most populated square kilometre (GHS-POP 2015), so the number describes where most people live rather than the mountains. Daymet gives the high, precipitation and the day's average humidity. Snow is split from rain by the day's mean temperature and counted at 10 in of snow per inch of water. Daymet has no daily peak dew point, so each day's average dew point gets that day's rise to its peak from NASA POWER.</p>
     <p><b>Clouds and world cities.</b> <a href="https://power.larc.nasa.gov/">NASA POWER</a>: daytime cloud is CERES satellite cloud amount (1°, about 100 km, smoother than temperature). Cities use POWER for everything: hourly MERRA-2 reanalysis on local time (about 55 × 50 km cells), with rain and snow from its own split.</p>
-    <p><b>World grid.</b> NASA POWER at one 0.5° × 0.625° MERRA-2 cell per 2° land cell (the one with the most land), so each square is a sample of its box, not an average; a coastal or mountain box can hide very different climates. Peak dew point is the day's mean plus its hourly rise to peak at that cell.</p>
+    <p><b>World grid.</b> NASA POWER MERRA-2 cells; peak dew point is the day's mean plus its hourly rise to peak at that cell. <span id="wnote"></span> Coasts still blend sea-moderated and inland cells.</p>
     <p><b>Limits.</b> Values are binned to 5°F, 10% cloud and the rain and snow steps shown, so the sliders move in those steps. Cities on a 55 km cell blur coastal and mountain differences; high-altitude cities such as Quito, Bogotá and Mexico City sit in cells lower than the city and read too warm.</p>`;
   readRamp();
   buildMap();
@@ -538,9 +626,9 @@ async function start() {
   // The world grid is the biggest download: the rest of the page works while it loads, or if it fails.
   try {
     W = await (await fetch("world.json")).json();
-    cells = await loadHists("world_hist.txt", W.sizes);
+    [cells, dem] = await Promise.all([loadHists(W.files, W.sizes), gunzip64(W.dem)]);
   } catch (e) { return; }
-  buildWorld();
+  buildWorld(new Int16Array(dem.buffer));
   paintWorld(); drawPins(WM);
 }
 start();

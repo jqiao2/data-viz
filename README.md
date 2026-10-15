@@ -172,23 +172,49 @@ threshold. Serve it over HTTP (`python -m http.server` in that folder), because 
 ### World grid
 
 ```
-python comfy_world.py   # first run ~1-2 hours of NASA POWER requests; later runs about a minute
+python comfy_world.py   # first run ~2.5 hours of NASA POWER requests plus a 478 MB ETOPO download; later runs about 3 minutes
 ```
 
-Writes `output/comfy/web/world.json` (cell centres, Natural Earth 50m country outlines pre-projected to a
-1440 × 576 plate carrée canvas, x = (lon + 180) × 4, y = (84 − lat) × 4) and `world_hist.txt` (one histogram per
-cell, same format as `hist.txt`), plus `output/comfy/world.png` and `world.csv` at the default thresholds.
+Writes `output/comfy/web/world.json` and `world_hist_0.txt`, `world_hist_1.txt`, ... (one histogram per cell,
+same packing as `hist.txt`, cells in `world.json` order, split under 15 MB a file), plus `output/comfy/world.png`
+and `world.csv` at the default thresholds. `world.json` holds, on a 1440 × 576 plate carrée canvas
+(x = (lon + 180) × 4, y = (84 − lat) × 4): `cells` (centres on a regular `step`° lattice from −180/−60), `ce`
+(each cell's mean MERRA-2 ground height, m), `n` (native cells summed into it), `files`/`sizes`, `dem`
+(base64 of gzip of int16 little-endian 1440 × 576, row 0 at 84°N, one value per canvas pixel: mean land height in
+m, −32768 for sea), `land` (Natural Earth 50m country outlines), `coast` (dissolved Natural Earth 50m land outline)
+and `lapse` (°F per km to add to the high, `t`, and the peak dew point, `d`).
 
-- **Grid:** 2° cells from 60°S to 84°N, kept when at least 5% of the cell is land in
-  [Natural Earth 50m countries](https://www.naturalearthdata.com/downloads/50m-cultural-vectors/) (4,681 cells).
-  2° keeps `world_hist.txt` near 6 MB; 1.5° would be ~8,000 cells and ~15 MB.
-- **Data:** NASA POWER point requests at one MERRA-2 cell (0.5° × 0.625°) per grid cell: the one with the most
-  land, nearest the centre on ties. So each cell is a sample, not an average of the 2° box: a 2° box on a coast or
-  mountain range can hold very different climates. Daily `T2M_MAX`, `T2MDEW`, `CLOUD_AMT_DAY`, `PRECTOTCORR` and
-  `PRECSNOLAND` (`PRECSNO` where that is undefined, over Greenland's ice and the Great Lakes), the same day
-  definitions as the cities. POWER's regional endpoint was tried first, but it allows one parameter, one year and
-  a 10° box per request, about 20,000 requests for the globe, versus ~9,400 point requests.
-- **Dew point:** POWER has no daily maximum dew point, so each day's mean `T2MDEW` gets that day's rise from mean
-  to peak from hourly `T2MDEW` (local solar time) at the same cell, which makes it the hourly maximum.
-  Cells `comfy_weather.py` already fetched (cities, counties) are reused from `data/raw/comfy/power/`.
-- **Caveats:** all the city caveats apply, at a coarser scale. Downloads are cached in `data/raw/comfy/world/`.
+- **Data:** NASA POWER's [regional daily endpoint](https://power.larc.nasa.gov/docs/services/api/temporal/daily/)
+  for every native MERRA-2 cell (0.5° × 0.625°, ~55 km) with any land from 60°S to 84°N, 2016–2025:
+  `T2M_MAX`, `T2MDEW`, `CLOUD_AMT_DAY` (CERES, 1°), `PRECTOTCORR` and `PRECSNOLAND` (`PRECSNO` where that is
+  undefined, over Greenland's ice and big lakes). The endpoint takes one parameter, at most 366 days and a 10° box
+  per request, so the land is covered by 351 boxes of 20 × 16 cells: 17,550 requests (plus `PRECSNO` boxes), as
+  NetCDF, cached in `data/raw/comfy/world/region/` as float16 land cells only (~2 GB). Each box's ground heights
+  come from one one-day JSON request. POWER drops the first row or column of a box whose minimum latitude or
+  longitude is exactly 0, so those boxes start one cell early.
+- **Averaging:** each 1° cell sums the day histograms of every native cell centred in it that is at least 50% land
+  (Natural Earth 50m countries), so a cell is the whole box's ten years of days, not one sample, and sea-dominated
+  cells do not wet or cool coastal land. A box with no such cell (thin coasts, small islands) takes the landiest
+  native cell centred within half a degree of it. Divide counts by the cell's total days (or `n` × 3,653) for
+  days per year. Counts over the packing's 4,095 are split across repeated entries for the same bin.
+  1° gives 17,354 cells and 36 MB of histograms in four files; 0.5° would be 64,391 cells and ~70 MB (and below the native
+  resolution, each 0.5° box holds zero or one native cell centre), too big for the page.
+- **Peak dew point:** POWER's daily data has only the mean dew point. Each day gets the rise from mean to peak
+  (hourly `T2MDEW`, local solar time) of the nearest of ~10,900 cells with hourly data (the old 2° world samples in
+  `data/raw/comfy/world/dew/` and `comfy_weather.py`'s cells), for the same day: the median distance is one native
+  cell (0.5°), 99% are within 1.3°, and a fifth are the cell itself. The same day is kept rather than a monthly
+  average so that a humid afternoon stays humid; the rise is a diurnal-mixing signal that varies over hundreds of
+  km, so the neighbour's value transfers well.
+- **Elevation:** `dem` is [ETOPO 2022](https://www.ncei.noaa.gov/products/etopo-global-relief-model) 60" surface
+  heights averaged over the land in each 0.25° pixel; a pixel is land when at least half of it is land in Natural
+  Earth 50m countries. The page shifts each pixel's high and dew point from its cell's height `ce` to the
+  pixel's height at the `lapse` rates, which are fitted from the data: each landy native cell's ten-year mean high
+  (and peak dew point) minus its landy neighbours' (5 × 5 cells) regressed on the difference in MERRA-2 ground
+  height. That gives −9.6 °F/km for the high (5.3 °C/km, less than the 6.5 °C/km standard atmosphere, as daily
+  highs on slopes usually are) and −8.0 °F/km for the dew point (4.4 °C/km; steeper than the ~2 °C/km of a rising air parcel because higher ground is also drier ground). `world.png` applies the same shift to
+  the default thresholds, assuming days spread evenly through each 5°F bin.
+- **Caveats:** reanalysis cannot see what is smaller than its ~55 km cells, and interpolating or shifting it by
+  height does not bring that back: coastal fog and marine layers (San Diego's May Gray, Lima's garúa, the Namib),
+  sea breezes, valley inversions and rain shadows narrower than a cell are missing or smeared. The height shift
+  moves temperature and dew point only; cloud, rain and snow stay the cell's. A single lapse rate for every place
+  and season is a simplification: inversions (winter basins) and humid slopes break it. All the city caveats apply.
